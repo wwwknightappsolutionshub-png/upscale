@@ -1,0 +1,71 @@
+---
+import Horizon from "../layouts/Horizon.astro";
+import { formatMoney, seatsLeft } from "@upscale/shared";
+import { formatDay, getCatalog, nextCohort } from "../lib/catalog";
+
+const catalog = await getCatalog();
+const rows = catalog.courses
+  .map((course) => {
+    const cohort = nextCohort(catalog, course.slug);
+    if (!cohort) return null;
+    return { course, cohort, left: seatsLeft(cohort) };
+  })
+  .filter(Boolean) as {
+    course: (typeof catalog.courses)[0];
+    cohort: NonNullable<ReturnType<typeof nextCohort>>;
+    left: number;
+  }[];
+---
+<Horizon
+  title="Schedule · UPSCALE"
+  description="Upcoming virtual cohort dates, class days, and remaining seats for UPSCALE tracks."
+>
+  <header class="schedule-head">
+    <div>
+      <p class="kicker">Calendar</p>
+      <h1 class="display">When we meet.</h1>
+      <p class="lede">
+        Live online in {catalog.settings.timezone}. Recordings same day. Studio work still due.
+      </p>
+    </div>
+    <ul class="schedule-legend" aria-label="Intake summary">
+      <li><strong>{rows.length}</strong><span>open tracks</span></li>
+      <li><strong>{catalog.settings.timezone}</strong><span>timezone</span></li>
+      <li><strong>2×</strong><span>sessions / week</span></li>
+    </ul>
+  </header>
+
+  <section class="schedule-grid" aria-label="Upcoming cohorts">
+    {
+      rows.map(({ course, cohort, left }) => {
+        const fill = Math.round(((cohort.seatCap - left) / cohort.seatCap) * 100);
+        return (
+          <article class={`schedule-card schedule-${course.slug}`}>
+            <div class="schedule-card-top">
+              <p class="schedule-when">{formatDay(cohort.startDate)}</p>
+              <p class="schedule-until">→ {formatDay(cohort.endDate)}</p>
+            </div>
+            <h2>{course.name}</h2>
+            <ul class="schedule-meta">
+              <li>{cohort.daysLabel}</li>
+              <li>{cohort.timeLabel}</li>
+              <li>{formatMoney(cohort.price, cohort.currency)}</li>
+            </ul>
+            <div class="schedule-seats">
+              <div class="schedule-bar" style={`--fill: ${fill}%`} aria-hidden="true">
+                <span />
+              </div>
+              <p>
+                <strong>{left}</strong> of {cohort.seatCap} seats open
+              </p>
+            </div>
+            <div class="schedule-actions">
+              <a class="btn" href={`/register?course=${course.slug}`}>Register</a>
+              <a class="text-btn" href={`/courses/${course.slug}`}>Outline</a>
+            </div>
+          </article>
+        );
+      })
+    }
+  </section>
+</Horizon>

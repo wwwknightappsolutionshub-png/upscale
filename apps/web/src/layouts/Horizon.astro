@@ -1,0 +1,96 @@
+---
+import "../styles/global.css";
+import Seo from "../components/Seo.astro";
+import { formatMoney, seatsLeft } from "@upscale/shared";
+import { formatDay, getCatalog, nextCohort } from "../lib/catalog";
+
+interface Props {
+  title: string;
+  description: string;
+  noindex?: boolean;
+  jsonLd?: unknown;
+  activeSlug?: string;
+}
+
+const catalog = await getCatalog();
+const { title, description, noindex, jsonLd, activeSlug } = Astro.props;
+const path = Astro.url.pathname;
+const slug =
+  activeSlug ||
+  catalog.courses.find((c) => path.includes(c.slug))?.slug ||
+  catalog.courses[0]?.slug;
+const course = catalog.courses.find((c) => c.slug === slug) || catalog.courses[0];
+const cohort = course ? nextCohort(catalog, course.slug) : undefined;
+const open = catalog.settings.registrationOpen && course?.registrationOpen;
+---
+<!doctype html>
+<html lang="en">
+  <head>
+    <Seo title={title} description={description} noindex={noindex} jsonLd={jsonLd} />
+  </head>
+  <body>
+    <a class="skip" href="#stage">Skip to content</a>
+    <div class="horizon">
+      <aside class="rail">
+        <a class="brand" href="/">
+          <img src="/brand/upscale-mark.png" width="64" height="64" alt="UPSCALE mark" />
+          <span class="word">
+            <strong>UPSCALE</strong>
+            <em><span class="today">learn today</span>, <span class="tmrw">build tomorrow</span></em>
+          </span>
+        </a>
+        <nav class="rail-courses" aria-label="Courses">
+          {
+            catalog.courses.map((c) => (
+              <a
+                href={`/courses/${c.slug}`}
+                class={c.slug === slug ? "is-active" : undefined}
+                aria-current={c.slug === slug ? "page" : undefined}
+              >
+                {c.name}
+              </a>
+            ))
+          }
+        </nav>
+        <nav class="rail-meta" aria-label="Institute">
+          <a href="/instructors">Instructors</a>
+          <a href="/schedule">Schedule</a>
+          <a href="/faq">FAQ</a>
+          <a href="/privacy">Privacy</a>
+          <a href="/terms">Terms</a>
+        </nav>
+      </aside>
+      <main class="stage" id="stage">
+        <slot />
+      </main>
+    </div>
+    <div class="dock">
+      <p>
+        {
+          cohort && course ? (
+            <>
+              <strong>{course.name}</strong>
+              <br />
+              {formatDay(cohort.startDate)} · {formatMoney(cohort.price, cohort.currency)} ·{" "}
+              {seatsLeft(cohort)} seats
+            </>
+          ) : (
+            <strong>Next cohort opens soon</strong>
+          )
+        }
+      </p>
+      {
+        open && course ? (
+          <a class="cta" href={`/register?course=${course.slug}`}>
+            Reserve a seat
+          </a>
+        ) : (
+          <a class="cta" href="/faq">
+            Intake closed
+          </a>
+        )
+      }
+    </div>
+    <slot name="scripts" />
+  </body>
+</html>

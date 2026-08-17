@@ -1,0 +1,48 @@
+---
+import Horizon from "../layouts/Horizon.astro";
+import { getCatalog } from "../lib/catalog";
+
+const catalog = await getCatalog();
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  mainEntity: catalog.settings.faqs.map((f) => ({
+    "@type": "Question",
+    name: f.q,
+    acceptedAnswer: { "@type": "Answer", text: f.a },
+  })),
+};
+---
+<Horizon
+  title="FAQ · UPSCALE"
+  description="How UPSCALE virtual training works: who it is for, live sessions, payment evidence, and certificates."
+  jsonLd={jsonLd}
+>
+  <div class="faq-page">
+    <header class="faq-head">
+      <p class="kicker">Questions</p>
+      <h1 class="display">Before you sit.</h1>
+      <p class="lede">Answers on who UPSCALE is for, how live sessions work, payment, and certificates.</p>
+    </header>
+
+    <section class="faq-grid" aria-label="Frequently asked questions">
+      {
+        catalog.settings.faqs.map((f, index) => (
+          <details class="faq-item">
+            <summary>
+              <span class="faq-num">{String(index + 1).padStart(2, "0")}</span>
+              <span class="faq-q">{f.q}</span>
+            </summary>
+            <p>{f.a}</p>
+          </details>
+        ))
+      }
+    </section>
+
+    <footer class="faq-foot">
+      <p class="note">
+        Still unsure? Write to <a href={`mailto:${catalog.settings.email}`}>{catalog.settings.email}</a>.
+      </p>
+    </footer>
+  </div>
+</Horizon>

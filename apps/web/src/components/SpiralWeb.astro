@@ -1,0 +1,114 @@
+---
+const cx = 200;
+const cy = 200;
+const rings = [32, 56, 80, 104, 128, 152, 176];
+
+function hexPoints(r: number, offsetDeg: number) {
+  return Array.from({ length: 6 }, (_, i) => {
+    const a = ((60 * i + offsetDeg) * Math.PI) / 180;
+    return {
+      x: cx + r * Math.cos(a),
+      y: cy + r * Math.sin(a),
+    };
+  });
+}
+
+function hexPoly(r: number, offsetDeg: number) {
+  return hexPoints(r, offsetDeg)
+    .map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`)
+    .join(" ");
+}
+
+const pointy = rings.map((r) => hexPoly(r, -30));
+const flat = rings.slice(1, -1).map((r) => hexPoly(r * 0.92, 0));
+const outer = hexPoints(rings[rings.length - 1], -30);
+const spokes = outer.map((p) => ({
+  x2: p.x.toFixed(1),
+  y2: p.y.toFixed(1),
+}));
+---
+<div class="hex-web" aria-hidden="true">
+  <svg viewBox="0 0 400 400" fill="none">
+    <g class="hex-spin">
+      {pointy.map((pts) => (
+        <polygon points={pts} />
+      ))}
+      {spokes.map((s) => (
+        <line x1={cx} y1={cy} x2={s.x2} y2={s.y2} />
+      ))}
+      <polygon class="core" points={hexPoly(14, -30)} />
+    </g>
+    <g class="hex-counter">
+      {flat.map((pts) => (
+        <polygon points={pts} />
+      ))}
+    </g>
+  </svg>
+</div>
+
+<style>
+  .hex-web {
+    width: 100%;
+    aspect-ratio: 1;
+    cursor: default;
+    transform: scale(1);
+    transform-origin: center;
+    transition: transform 0.55s cubic-bezier(0.22, 1.15, 0.36, 1);
+  }
+  .hex-web:hover {
+    transform: scale(1.18);
+  }
+  svg {
+    width: 100%;
+    height: 100%;
+    display: block;
+    overflow: visible;
+  }
+  polygon,
+  line {
+    stroke: #111;
+    fill: none;
+    stroke-width: 1.15;
+    stroke-linejoin: miter;
+  }
+  .hex-spin polygon,
+  .hex-spin line {
+    opacity: 0.38;
+  }
+  .hex-counter polygon {
+    opacity: 0.22;
+  }
+  .core {
+    fill: #111;
+    stroke: none;
+    opacity: 1;
+  }
+  .hex-spin,
+  .hex-counter {
+    transform-origin: 200px 200px;
+  }
+  .hex-spin {
+    animation: spin 40s linear infinite;
+  }
+  .hex-counter {
+    animation: spin 56s linear infinite reverse;
+  }
+
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .hex-spin,
+    .hex-counter {
+      animation: none;
+    }
+    .hex-web,
+    .hex-web:hover {
+      transform: none;
+      transition: none;
+    }
+  }
+</style>

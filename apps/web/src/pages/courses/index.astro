@@ -1,0 +1,34 @@
+---
+import Horizon from "../../layouts/Horizon.astro";
+import { formatMoney } from "@upscale/shared";
+import { formatDay, getCatalog, nextCohort } from "../../lib/catalog";
+
+const catalog = await getCatalog();
+---
+<Horizon
+  title="Courses · UPSCALE"
+  description="Four virtual tracks: Graphic Design, Front-End Development, Backend Development, and Full Stack Development."
+>
+  <p class="kicker">Programmes</p>
+  <h1 class="display">Four tracks. One institute.</h1>
+  <p class="lede">
+    Pick a line of work, not a pile of modules. Each page is the syllabus, the next cohort, and who teaches it.
+  </p>
+  {
+    catalog.courses.map((course) => {
+      const cohort = nextCohort(catalog, course.slug);
+      return (
+        <section class="course-block">
+          <h2>{course.name}</h2>
+          <p class="lede">{course.shortPitch}</p>
+          <p class="meta-line">
+            {course.durationWeeks} weeks · {cohort ? `${formatDay(cohort.startDate)} · ${formatMoney(cohort.price, cohort.currency)}` : ""}
+          </p>
+          <a class="text-btn" href={`/courses/${course.slug}`}>
+            Course detail
+          </a>
+        </section>
+      );
+    })
+  }
+</Horizon>

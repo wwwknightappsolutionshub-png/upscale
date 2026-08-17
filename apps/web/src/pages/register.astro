@@ -1,0 +1,318 @@
+---
+import Horizon from "../layouts/Horizon.astro";
+import WavingPalmIllustration from "../components/WavingPalmIllustration.astro";
+import { COURSE_SLUGS, formatMoney, motivationLabel, NIGERIA_STATE_NAMES, NIGERIA_STATES } from "@upscale/shared";
+import { courseOf, getCatalog, apiUrl } from "../lib/catalog";
+
+const catalog = await getCatalog();
+const pre = Astro.url.searchParams.get("course") || "";
+const selected = COURSE_SLUGS.includes(pre as (typeof COURSE_SLUGS)[number]) ? pre : catalog.courses[0].slug;
+const course = courseOf(catalog, selected);
+
+const courseFees = Object.fromEntries(
+  catalog.courses.map((c) => {
+    const cohort = catalog.cohorts.find((co) => co.courseSlug === c.slug);
+    const price = cohort?.price ?? c.price;
+    const currency = cohort?.currency ?? c.currency;
+    return [c.slug, { label: formatMoney(price, currency), price, currency }];
+  }),
+);
+---
+<Horizon
+  title="Register · UPSCALE"
+  description="Reserve a seat on an UPSCALE cohort in Nigeria. Pay by bank transfer and upload your receipt on this page."
+  noindex={true}
+  activeSlug={course?.slug}
+>
+  <header class="register-head" id="register-intro">
+    <p class="kicker">Admissions</p>
+    <h1 class="display">Reserve a seat.</h1>
+  </header>
+
+  <hr class="section-rule register-rule" id="register-rule" aria-hidden="true" />
+
+  {
+    !catalog.settings.registrationOpen && (
+      <p class="banner bad">{catalog.settings.closedMessage}</p>
+    )
+  }
+
+  <div id="register-flow" class="register-flow">
+    <form class="form" id="register-form" hidden={!catalog.settings.registrationOpen}>
+      <label>
+        Full name
+        <input name="name" required minlength="2" maxlength="120" autocomplete="name" />
+        <span class="field-error" data-for="name" hidden></span>
+      </label>
+      <label>
+        Email
+        <input type="email" name="email" required maxlength="180" autocomplete="email" />
+        <span class="field-error" data-for="email" hidden></span>
+      </label>
+      <label>
+        Phone
+        <input name="phone" required maxlength="16" autocomplete="tel" placeholder="08012345678" />
+        <span class="field-error" data-for="phone" hidden></span>
+      </label>
+      <label>
+        State
+        <select name="state" id="state-select" required>
+          <option value="">Select state</option>
+          {NIGERIA_STATE_NAMES.map((s) => (
+            <option value={s}>{s}</option>
+          ))}
+        </select>
+        <span class="field-error" data-for="state" hidden></span>
+      </label>
+      <label>
+        City
+        <select name="city" id="city-select" required disabled>
+          <option value="">Select state first</option>
+        </select>
+        <span class="field-error" data-for="city" hidden></span>
+      </label>
+      <label>
+        Course
+        <select name="courseSlug" id="course-select" required>
+          {
+            catalog.courses.map((c) => (
+              <option value={c.slug} selected={c.slug === selected}>
+                {c.name}
+              </option>
+            ))
+          }
+        </select>
+        <span class="field-error" data-for="courseSlug" hidden></span>
+      </label>
+      <p class="course-fee" id="course-fee" aria-live="polite">
+        Course fee: <strong>{courseFees[selected]?.label ?? "—"}</strong>
+      </p>
+      <label>
+        Why UPSCALE
+        <select name="motivation" required>
+          {Object.entries(motivationLabel).map(([value, label]) => (
+            <option value={value}>{label}</option>
+          ))}
+        </select>
+        <span class="field-error" data-for="motivation" hidden></span>
+      </label>
+      <label class="note consent-label">
+        <input type="checkbox" name="consent" required />
+        I agree that UPSCALE stores my details and payment evidence to run this cohort, as described in the <a href="/privacy">privacy note</a>.
+        <span class="field-error" data-for="consent" hidden></span>
+      </label>
+      <button type="submit" id="register-submit">Send registration</button>
+      <p class="note field-error" id="form-error" hidden></p>
+    </form>
+
+    <section class="register-step" id="step-payment" hidden>
+      <h2 class="step-title">Payment details</h2>
+      <p class="lede">Transfer the course fee using the details below. Put your reference in the narration.</p>
+      <dl class="pay-facts" id="pay-facts"></dl>
+      <p class="countdown-note">
+        Wait for payment document upload field — <strong id="countdown">30</strong>s
+      </p>
+      <form class="form upload-form" id="upload-form" hidden>
+        <label>
+          Payment attachment
+          <input type="file" name="file" accept="image/jpeg,image/png,image/webp,application/pdf" required />
+        </label>
+        <button type="submit" id="upload-submit">Submit</button>
+        <p class="note field-error" id="upload-error" hidden></p>
+      </form>
+    </section>
+
+    <section class="register-step thank-you" id="step-thanks" hidden>
+      <div class="thank-you-grid">
+        <div class="thank-you-copy">
+          <h1 class="display thank-you-title">
+            <span class="thank-you-title__line">Thank</span>
+            <span class="thank-you-title__line">You For</span>
+            <span class="thank-you-title__line">Your</span>
+            <span class="thank-you-title__line">Interest</span>
+          </h1>
+          <p class="lede thank-sub">
+            Check your email for your payment confirmation mail and other relevant information on the next step towards the training.
+          </p>
+          <a class="btn" href="/">Return Home</a>
+        </div>
+        <WavingPalmIllustration class="thank-you-art" />
+      </div>
+    </section>
+  </div>
+
+  <div class="register-modal" id="upload-modal" hidden role="dialog" aria-modal="true" aria-labelledby="upload-modal-title" aria-hidden="true">
+    <div class="register-modal__panel">
+      <h2 id="upload-modal-title">Now upload your payment attachment</h2>
+      <p>Use the file field below, then click Submit.</p>
+      <button type="button" class="btn" id="modal-ok">Got it</button>
+    </div>
+  </div>
+
+  <script slot="scripts" define:vars={{ api: apiUrl, courseFees, nigeriaLocations: NIGERIA_STATES }}>
+  const form = document.getElementById("register-form");
+  const registerIntro = document.getElementById("register-intro");
+  const registerRule = document.getElementById("register-rule");
+  const stepPayment = document.getElementById("step-payment");
+  const stepThanks = document.getElementById("step-thanks");
+  const payFacts = document.getElementById("pay-facts");
+  const countdownEl = document.getElementById("countdown");
+  const uploadForm = document.getElementById("upload-form");
+  const uploadModal = document.getElementById("upload-modal");
+  const modalOk = document.getElementById("modal-ok");
+  const formError = document.getElementById("form-error");
+  const uploadError = document.getElementById("upload-error");
+  const stateSelect = document.getElementById("state-select");
+  const citySelect = document.getElementById("city-select");
+  const courseSelect = document.getElementById("course-select");
+  const courseFee = document.getElementById("course-fee");
+
+  let uploadToken = "";
+  let countdownTimer = null;
+
+  function showModal() {
+    uploadModal.hidden = false;
+    uploadModal.setAttribute("aria-hidden", "false");
+  }
+
+  function hideModal() {
+    uploadModal.hidden = true;
+    uploadModal.setAttribute("aria-hidden", "true");
+  }
+
+  function clearFieldErrors() {
+    document.querySelectorAll(".field-error").forEach((el) => {
+      el.textContent = "";
+      el.hidden = true;
+    });
+    formError.hidden = true;
+    uploadError.hidden = true;
+  }
+
+  function showFieldError(name, message) {
+    const el = document.querySelector(`.field-error[data-for="${name}"]`);
+    if (el) {
+      el.textContent = message;
+      el.hidden = false;
+    }
+  }
+
+  function populateCities(state) {
+    citySelect.innerHTML = "";
+    const cities = nigeriaLocations[state] || [];
+    if (!cities.length) {
+      citySelect.disabled = true;
+      citySelect.innerHTML = '<option value="">Select state first</option>';
+      return;
+    }
+    citySelect.disabled = false;
+    citySelect.innerHTML = '<option value="">Select city</option>';
+    for (const city of cities) {
+      const opt = document.createElement("option");
+      opt.value = city;
+      opt.textContent = city;
+      citySelect.appendChild(opt);
+    }
+  }
+
+  stateSelect?.addEventListener("change", () => populateCities(stateSelect.value));
+
+  courseSelect?.addEventListener("change", () => {
+    const fee = courseFees[courseSelect.value];
+    if (fee && courseFee) {
+      courseFee.innerHTML = `Course fee: <strong>${fee.label}</strong>`;
+    }
+  });
+
+  modalOk?.addEventListener("click", hideModal);
+
+  uploadModal?.addEventListener("click", (e) => {
+    if (e.target === uploadModal) hideModal();
+  });
+
+  function startCountdown() {
+    let left = 30;
+    countdownEl.textContent = String(left);
+    uploadForm.hidden = true;
+    hideModal();
+    countdownTimer = window.setInterval(() => {
+      left -= 1;
+      countdownEl.textContent = String(Math.max(0, left));
+      if (left <= 0) {
+        window.clearInterval(countdownTimer);
+        uploadForm.hidden = false;
+        showModal();
+      }
+    }, 1000);
+  }
+
+  function renderPayment(json) {
+    payFacts.innerHTML = `
+      <div><dt>Course</dt><dd>${json.course}</dd></div>
+      <div><dt>Amount</dt><dd>${json.amount}</dd></div>
+      <div><dt>Reference</dt><dd><code>${json.referenceCode}</code></dd></div>
+      <div><dt>Bank</dt><dd>${json.bank.bankName}</dd></div>
+      <div><dt>Account name</dt><dd>${json.bank.accountName}</dd></div>
+      <div><dt>Account number</dt><dd>${json.bank.accountNumber}</dd></div>
+      <div><dt>Instructions</dt><dd>${json.bank.instructions}</dd></div>
+    `;
+  }
+
+  form?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    clearFieldErrors();
+    const data = new FormData(form);
+    data.set("consent", "true");
+    const submitBtn = document.getElementById("register-submit");
+    submitBtn.disabled = true;
+    try {
+      const res = await fetch(`${api}/public/register`, { method: "POST", body: data });
+      const json = await res.json();
+      if (!res.ok) {
+        formError.hidden = false;
+        formError.textContent = json.error || "Could not register.";
+        const fields = json.details?.fieldErrors || {};
+        for (const [key, msgs] of Object.entries(fields)) {
+          if (msgs?.[0]) showFieldError(key, msgs[0]);
+        }
+        return;
+      }
+      uploadToken = json.uploadToken;
+      registerIntro.hidden = true;
+      registerRule.hidden = true;
+      form.hidden = true;
+      stepPayment.hidden = false;
+      renderPayment(json);
+      startCountdown();
+    } finally {
+      submitBtn.disabled = false;
+    }
+  });
+
+  uploadForm?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    uploadError.hidden = true;
+    const data = new FormData(uploadForm);
+    data.set("token", uploadToken);
+    data.set("method", "transfer");
+    const btn = document.getElementById("upload-submit");
+    btn.disabled = true;
+    try {
+      const res = await fetch(`${api}/public/evidence`, { method: "POST", body: data });
+      const json = await res.json();
+      if (!res.ok) {
+        uploadError.hidden = false;
+        uploadError.textContent = json.error || "Upload failed.";
+        return;
+      }
+      if (countdownTimer) window.clearInterval(countdownTimer);
+      hideModal();
+      stepPayment.hidden = true;
+      stepThanks.hidden = false;
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    } finally {
+      btn.disabled = false;
+    }
+  });
+  </script>
+</Horizon>

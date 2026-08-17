@@ -1,0 +1,111 @@
+---
+import Horizon from "../layouts/Horizon.astro";
+import { apiUrl } from "../lib/catalog";
+---
+<Horizon
+  title="Payment evidence · UPSCALE"
+  description="Pay by transfer using your UPSCALE reference, then upload the receipt for human review."
+  noindex={true}
+>
+  <p class="kicker">Receipt desk</p>
+  <h1 class="display">Pay. Then prove it.</h1>
+  <p class="lede" id="intro">Open this page from the link in your registration email. The token in the address is private.</p>
+  <p id="status-line" class="status-pill"></p>
+  <div id="error" class="banner bad" hidden></div>
+  <div class="pay-grid" id="desk" hidden>
+    <section class="pay-col">
+      <h2>Pay here</h2>
+      <p id="who"></p>
+      <p id="amount"></p>
+      <p>
+        <strong id="bank-name"></strong><br />
+        <span id="acct-name"></span><br />
+        <span id="acct-no"></span>
+      </p>
+      <p class="note" id="instructions"></p>
+      <p>Reference: <code id="ref"></code></p>
+    </section>
+    <section class="pay-col">
+      <h2>Drop proof</h2>
+      <form class="form" id="up-form">
+        <input type="hidden" name="token" id="token-field" />
+        <label>
+          Method
+          <select name="method">
+            <option value="transfer">Bank transfer</option>
+            <option value="other">Other</option>
+          </select>
+        </label>
+        <label class="drop">
+          Receipt (JPG, PNG, WebP or PDF · 5 MB)
+          <input type="file" name="file" required accept="image/jpeg,image/png,image/webp,application/pdf" />
+        </label>
+        <button type="submit">Upload evidence</button>
+      </form>
+      <p class="note">A person matches the amount, the name, and the reference. You can upload again if we reject the file.</p>
+    </section>
+  </div>
+</Horizon>
+
+<script define:vars={{ api: apiUrl }}>
+  const params = new URLSearchParams(location.search);
+  const token = params.get("token") || "";
+  const error = document.getElementById("error");
+  const desk = document.getElementById("desk");
+  const statusLine = document.getElementById("status-line");
+
+  function fail(msg) {
+    error.hidden = false;
+    error.textContent = msg;
+  }
+
+  async function load() {
+    if (!token) {
+      fail("This page needs the private link from your registration email.");
+      return;
+    }
+    const res = await fetch(`${api}/public/status?token=${encodeURIComponent(token)}`);
+    const json = await res.json();
+    if (!res.ok) {
+      fail(json.error || "Link not recognised.");
+      return;
+    }
+    desk.hidden = false;
+    statusLine.textContent = json.status.replaceAll("_", " ");
+    document.getElementById("who").textContent = `${json.name} · ${json.course}`;
+    document.getElementById("amount").textContent = `Amount: ${json.amount}`;
+    document.getElementById("bank-name").textContent = json.bank.bankName;
+    document.getElementById("acct-name").textContent = json.bank.accountName;
+    document.getElementById("acct-no").textContent = json.bank.accountNumber;
+    document.getElementById("instructions").textContent = json.bank.instructions;
+    document.getElementById("ref").textContent = json.referenceCode;
+    document.getElementById("token-field").value = token;
+    if (json.status === "enrolled" || json.status === "verified") {
+      document.getElementById("up-form").hidden = true;
+    }
+    if (json.reviewNotes) {
+      const p = document.createElement("p");
+      p.className = "banner bad";
+      p.textContent = json.reviewNotes;
+      desk.prepend(p);
+    }
+  }
+
+  document.getElementById("up-form")?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const data = new FormData(e.currentTarget);
+    const res = await fetch(`${api}/public/evidence`, { method: "POST", body: data });
+    const json = await res.json();
+    if (!res.ok) {
+      fail(json.error || "Upload failed.");
+      return;
+    }
+    statusLine.textContent = "evidence submitted";
+    fail("");
+    error.hidden = true;
+    alert("Receipt received. Watch your email for the review.");
+    load();
+  });
+
+  load();
+</script>

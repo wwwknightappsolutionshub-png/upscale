@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+Disallow: /payment
+Disallow: /register
+
+Sitemap: http://localhost:4321/sitemap-index.xml

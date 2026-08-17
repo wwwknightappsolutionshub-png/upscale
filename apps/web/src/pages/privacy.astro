@@ -1,0 +1,27 @@
+---
+import Horizon from "../layouts/Horizon.astro";
+import { getCatalog } from "../lib/catalog";
+
+const catalog = await getCatalog();
+---
+<Horizon
+  title="Privacy · UPSCALE"
+  description="How UPSCALE stores registration data and payment evidence."
+>
+  <article class="legal">
+    <p class="kicker">Legal</p>
+    <h1 class="display">Privacy.</h1>
+    <p>
+      UPSCALE (“we”) collects what we need to run a virtual cohort: your name, email, phone, optional city, course choice, motivation, and the payment evidence you upload.
+    </p>
+    <p>
+      Payment receipts can contain account names and transaction ids. They are stored privately, viewed only by staff reviewing enrolment, and are not used for marketing.
+    </p>
+    <p>
+      We keep student and evidence records for twelve months after the cohort ends, then delete files unless a lawful dispute requires a longer hold. Email {catalog.settings.email} to ask for a copy or deletion of your registration, subject to that hold.
+    </p>
+    <p>
+      The public site is informational. Registration and upload traffic goes to our API. We log request time and a coarse network address to rate-limit abuse.
+    </p>
+  </article>
+</Horizon>

@@ -1,0 +1,24 @@
+{
+  "name": "upscale",
+  "private": true,
+  "version": "1.0.0",
+  "description": "UPSCALE — learn today, build tomorrow. Virtual career-switch training.",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "concurrently -n api,web -c cyan,magenta \"npm run dev -w @upscale/api\" \"npm run dev -w @upscale/web\"",
+    "dev:api": "npm run dev -w @upscale/api",
+    "dev:web": "npm run dev -w @upscale/web",
+    "build": "npm run build -w @upscale/web",
+    "start:api": "npm run start -w @upscale/api",
+    "preview": "npm run preview -w @upscale/web"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

@@ -1,0 +1,210 @@
+---
+import Horizon from "../layouts/Horizon.astro";
+import Mark from "../components/Mark.astro";
+import { formatMoney } from "@upscale/shared";
+import { formatDay, getCatalog, instructorsOf, nextCohort } from "../lib/catalog";
+import "../styles/home.css";
+
+const catalog = await getCatalog();
+const site = import.meta.env.PUBLIC_SITE_URL || "http://localhost:4321";
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "EducationalOrganization",
+      name: "UPSCALE",
+      slogan: catalog.settings.tagline,
+      url: site,
+      email: catalog.settings.email,
+      description: catalog.settings.heroLine,
+    },
+    {
+      "@type": "FAQPage",
+      mainEntity: catalog.settings.faqs.map((f) => ({
+        "@type": "Question",
+        name: f.q,
+        acceptedAnswer: { "@type": "Answer", text: f.a },
+      })),
+    },
+  ],
+};
+
+const audiences = [
+  {
+    mark: "switch" as const,
+    title: "Switching path",
+    copy: "Leave the job that no longer fits. The tracks assume you can show up twice a week and do the studio hours — not that you already have a title in design or engineering.",
+  },
+  {
+    mark: "newbie" as const,
+    title: "New to IT",
+    copy: "If the vocabulary is new, start on Graphic Design or Front-End. We teach the craft in public: live sessions, recorded catch-up, critique on your actual work.",
+  },
+  {
+    mark: "upskill" as const,
+    title: "Upscaling",
+    copy: "You already ship bits of this at work and want a cohort, a syllabus, and a capstone with standards. Backend and Full Stack are built for that stretch.",
+  },
+];
+---
+<Horizon
+  title="UPSCALE — learn today, build tomorrow"
+  description="Virtual training in Graphic Design, Front-End, Backend, and Full Stack for career switchers, newcomers to IT, and people upscaling their craft."
+  jsonLd={jsonLd}
+>
+  <section class="hero-split in">
+    <div class="hero-copy">
+      <p class="kicker">Virtual institute</p>
+      <h1 class="display"><span class="today">Learn today,</span><br /><span class="tmrw">build tomorrow.</span></h1>
+      <p class="lede">{catalog.settings.heroLine}</p>
+      <div class="axis" aria-hidden="true">
+        <b>Today</b>
+        <span class="line"></span>
+        <em>Tomorrow</em>
+      </div>
+    </div>
+    <div class="hero-art">
+      <Mark name="rise" />
+    </div>
+  </section>
+
+  <section class="after-hero" aria-label="Institute details">
+    <ul class="ledger reveal">
+      {catalog.settings.proof.map((p) => (
+        <li>
+          <strong data-label={p.value}>
+            {p.value.startsWith("Live") ? (
+              <>
+                <span class="live-dot"></span>Live
+              </>
+            ) : (
+              p.value
+            )}
+          </strong>
+          <span>{p.label}</span>
+        </li>
+      ))}
+    </ul>
+
+    <section class="ways-band reveal" aria-label="Who it is for">
+      <header class="ways-head">
+        <p class="slab">Ways <em>in</em></p>
+      </header>
+      <div class="ways">
+        {audiences.map((a, i) => (
+          <article class={`way way-${i}`}>
+            <Mark name={a.mark} />
+            <h2>{a.title}</h2>
+            <p>{a.copy}</p>
+          </article>
+        ))}
+      </div>
+    </section>
+
+    <p class="slab slab-rule reveal">
+      The <em>tracks</em>
+    </p>
+    <section class="tracks" aria-label="Courses">
+      {
+        catalog.courses.map((course) => {
+          const cohort = nextCohort(catalog, course.slug);
+          const lead = instructorsOf(catalog, course)[0];
+          const mid = course.outline[Math.floor(course.outline.length / 2)];
+          const last = course.outline[course.outline.length - 1];
+          return (
+            <article class={`track track-${course.slug} reveal`} id={course.slug}>
+              <div class="track-visual">
+                <Mark name={course.slug} />
+              </div>
+              <div class="track-copy">
+                <p class="kicker">
+                  {course.durationWeeks} weeks · {course.weeklyHours}h / week
+                </p>
+                <h2>{course.name}</h2>
+                <p class="lede">{course.shortPitch}</p>
+                <p class="meta-line">
+                  {cohort ? (
+                    <>
+                      {formatDay(cohort.startDate)} · {cohort.daysLabel} {cohort.timeLabel} ·{" "}
+                      {formatMoney(cohort.price, cohort.currency)}
+                    </>
+                  ) : null}
+                  {lead ? ` · ${lead.name}` : null}
+                </p>
+                <ol class="ticks" aria-label={`${course.name} arc`}>
+                  <li>
+                    <span>01</span>
+                    {course.outline[0].title}
+                  </li>
+                  <li>
+                    <span>→</span>
+                    {mid.title}
+                  </li>
+                  <li>
+                    <span>↑</span>
+                    {last.title}
+                  </li>
+                </ol>
+                <a class="text-btn" href={`/courses/${course.slug}`}>
+                  Full outline
+                </a>
+              </div>
+            </article>
+          );
+        })
+      }
+    </section>
+  </section>
+</Horizon>
+
+<script>
+  const motionOk = !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  const io = new IntersectionObserver(
+    (entries) => {
+      for (const entry of entries) {
+        if (!entry.isIntersecting) continue;
+        entry.target.classList.add("in");
+        io.unobserve(entry.target);
+      }
+    },
+    { threshold: 0.12, rootMargin: "0px 0px -6% 0px" },
+  );
+
+  document.querySelectorAll(".reveal").forEach((el) => {
+    if (!motionOk) {
+      el.classList.add("in");
+      return;
+    }
+    io.observe(el);
+  });
+
+  if (motionOk) {
+    const stats = document.querySelectorAll<HTMLElement>(".ledger strong[data-label]");
+    const seen = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (!entry.isIntersecting) continue;
+          const el = entry.target as HTMLElement;
+          const raw = el.dataset.label || "";
+          const nums = raw.match(/\d+/g);
+          if (nums && nums.length === 1 && !raw.includes("–") && !raw.includes("-")) {
+            const end = Number(nums[0]);
+            const suffix = raw.replace(String(end), "");
+            const start = performance.now();
+            const tick = (now: number) => {
+              const t = Math.min(1, (now - start) / 900);
+              const eased = 1 - Math.pow(1 - t, 3);
+              el.textContent = `${Math.round(end * eased)}${suffix}`;
+              if (t < 1) requestAnimationFrame(tick);
+            };
+            requestAnimationFrame(tick);
+          }
+          seen.unobserve(el);
+        }
+      },
+      { threshold: 0.4 },
+    );
+    stats.forEach((el) => seen.observe(el));
+  }
+</script>

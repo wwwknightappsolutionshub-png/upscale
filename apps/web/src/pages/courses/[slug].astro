@@ -1,0 +1,175 @@
+---
+import Horizon from "../../layouts/Horizon.astro";
+import { formatMoney, seatsLeft } from "@upscale/shared";
+import { courseOf, formatDay, getCatalog, instructorsOf, nextCohort } from "../../lib/catalog";
+
+export async function getStaticPaths() {
+  const catalog = await getCatalog();
+  return catalog.courses.map((course) => ({ params: { slug: course.slug } }));
+}
+
+const { slug } = Astro.params;
+const catalog = await getCatalog();
+const course = courseOf(catalog, slug!);
+if (!course) return Astro.redirect("/courses");
+const cohort = nextCohort(catalog, course.slug);
+const teachers = instructorsOf(catalog, course);
+const site = import.meta.env.PUBLIC_SITE_URL || "http://localhost:4321";
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@type": "Course",
+  name: course.name,
+  description: course.ogDescription,
+  provider: { "@type": "EducationalOrganization", name: "UPSCALE", url: site },
+  courseMode: "Online",
+  timeToComplete: `P${course.durationWeeks}W`,
+  offers: cohort
+    ? {
+        "@type": "Offer",
+        price: cohort.price,
+        priceCurrency: cohort.currency,
+        availability: seatsLeft(cohort) > 0 ? "https://schema.org/InStock" : "https://schema.org/SoldOut",
+        url: `${site}/courses/${course.slug}`,
+      }
+    : undefined,
+  hasCourseInstance: cohort
+    ? {
+        "@type": "CourseInstance",
+        courseMode: "Online",
+        startDate: cohort.startDate,
+        endDate: cohort.endDate,
+      }
+    : undefined,
+};
+---
+<Horizon
+  title={`${course.name} (Virtual) | UPSCALE`}
+  description={course.ogDescription}
+  activeSlug={course.slug}
+  jsonLd={jsonLd}
+>
+  <header class:list={["course-hero", `course-hero-${course.slug}`]}>
+    <div class="course-hero-inner">
+      <p class="kicker">Virtual · {course.durationWeeks} weeks · {course.weeklyHours}h / week</p>
+      <h1 class="display">{course.name}</h1>
+      <p class="lede">{course.shortPitch}</p>
+      {
+        cohort && (
+          <ul class="course-hero-facts">
+            <li>
+              <strong>{formatDay(cohort.startDate)}</strong>
+              <span>starts</span>
+            </li>
+            <li>
+              <strong>{formatMoney(cohort.price, cohort.currency)}</strong>
+              <span>fee</span>
+            </li>
+            <li>
+              <strong>{seatsLeft(cohort)}</strong>
+              <span>seats left</span>
+            </li>
+            <li>
+              <strong>{cohort.daysLabel}</strong>
+              <span>{cohort.timeLabel} {cohort.timezone}</span>
+            </li>
+          </ul>
+        )
+      }
+      <p class="course-hero-cta">
+        <a class="btn" href={`/register?course=${course.slug}`}>Reserve a seat</a>
+      </p>
+    </div>
+  </header>
+
+  <div class="course-body">
+  <h2>You will leave able to</h2>
+  <ul>
+    {course.outcomes.map((o) => <li>{o}</li>)}
+  </ul>
+
+  <h2 class="heading-rule">Outline</h2>
+  <ol class="syllabus">
+    {
+      course.outline.map((w, i) => (
+        <li class={`week-card tone-${i % 4}`} style={`--i: ${i}`} tabindex="0">
+          <div class="num">{String(w.week).padStart(2, "0")}</div>
+          <h3>{w.title}</h3>
+          <p>{w.topics.join(" · ")} · {w.hours}h</p>
+          {w.project && <span class="proj">Build: {w.project}</span>}
+        </li>
+      ))
+    }
+  </ol>
+
+  <h2>Tools</h2>
+  <p class="lede">{course.tools.join(" · ")}</p>
+  <h2>Prerequisites</h2>
+  <p class="lede">{course.prerequisites}</p>
+
+  <h2>Instructors</h2>
+  <ul class="cast">
+    {
+      teachers.map((i) => (
+        <li>
+          <a href={`/instructors/${i.slug}`}>
+            <div class:list={["avatar", i.accent]}>{i.initials}</div>
+            <div>
+              <h2>{i.name}</h2>
+              <p>{i.role}</p>
+            </div>
+          </a>
+        </li>
+      ))
+    }
+  </ul>
+
+  <section class="faq">
+    <h2>Course questions</h2>
+    {
+      course.faq.map((f) => (
+        <details>
+          <summary>{f.q}</summary>
+          <p>{f.a}</p>
+        </details>
+      ))
+    }
+  </section>
+  </div>
+</Horizon>
+
+<script>
+  const motionOk = !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const cards = document.querySelectorAll<HTMLElement>(".week-card");
+
+  if (motionOk) {
+    const io = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (!entry.isIntersecting) continue;
+          entry.target.classList.add("in");
+          io.unobserve(entry.target);
+        }
+      },
+      { threshold: 0.12, rootMargin: "0px 0px -6% 0px" },
+    );
+    cards.forEach((card) => io.observe(card));
+
+    cards.forEach((card) => {
+      card.addEventListener("mousemove", (e) => {
+        const r = card.getBoundingClientRect();
+        const x = (e.clientX - r.left) / r.width - 0.5;
+        const y = (e.clientY - r.top) / r.height - 0.5;
+        card.style.setProperty("--rx", `${(-y * 7).toFixed(2)}deg`);
+        card.style.setProperty("--ry", `${(x * 9).toFixed(2)}deg`);
+        card.style.setProperty("--mx", `${((x + 0.5) * 100).toFixed(1)}%`);
+        card.style.setProperty("--my", `${((y + 0.5) * 100).toFixed(1)}%`);
+      });
+      card.addEventListener("mouseleave", () => {
+        card.style.setProperty("--rx", "0deg");
+        card.style.setProperty("--ry", "0deg");
+      });
+    });
+  } else {
+    cards.forEach((card) => card.classList.add("in"));
+  }
+</script>

@@ -1,0 +1,40 @@
+---
+interface Props {
+  class?: string;
+}
+const { class: className } = Astro.props;
+---
+<div class:list={["wave-palm", className]} aria-hidden="true">
+  <svg viewBox="0 0 200 240" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <g class="wave-palm__arm">
+      <path
+        d="M96 228 C96 196 98 168 100 148 L100 132"
+        stroke="#8a8a8a"
+        stroke-width="18"
+        stroke-linecap="round"
+      />
+    </g>
+    <g class="wave-palm__hand">
+      <path
+        d="M100 132 C78 128 62 112 58 92 C56 78 64 66 78 62 C88 59 96 64 100 72 C104 64 112 59 122 62 C136 66 144 78 142 92 C138 112 122 128 100 132 Z"
+        fill="#9a9a9a"
+      />
+      <rect x="54" y="44" width="14" height="44" rx="7" fill="#b0b0b0" transform="rotate(-18 61 66)" />
+      <rect x="68" y="28" width="14" height="52" rx="7" fill="#b8b8b8" transform="rotate(-8 75 54)" />
+      <rect x="86" y="20" width="14" height="56" rx="7" fill="#c2c2c2" />
+      <rect x="104" y="24" width="14" height="54" rx="7" fill="#b8b8b8" transform="rotate(8 111 51)" />
+      <rect x="122" y="36" width="14" height="46" rx="7" fill="#b0b0b0" transform="rotate(18 129 59)" />
+      <path
+        d="M88 118 C94 122 106 122 112 118"
+        stroke="#7a7a7a"
+        stroke-width="4"
+        stroke-linecap="round"
+      />
+    </g>
+    <g class="wave-palm__motion" opacity="0.45">
+      <path d="M148 72 C158 68 168 72 172 80" stroke="#bdbdbd" stroke-width="3" stroke-linecap="round" />
+      <path d="M152 96 C164 92 174 98 178 106" stroke="#bdbdbd" stroke-width="3" stroke-linecap="round" />
+      <path d="M150 120 C160 116 170 120 174 128" stroke="#bdbdbd" stroke-width="3" stroke-linecap="round" />
+    </g>
+  </svg>
+</div>
