@@ -12,8 +12,13 @@ export async function loadCatalog(): Promise<Catalog> {
     db.select().from(settings).where(eq(settings.id, "main")).limit(1),
   ]);
 
+  const parsedSettings = JSON.parse(settingRows[0]?.json || "{}") as LandingSettings;
+
   return {
-    settings: JSON.parse(settingRows[0]?.json || "{}") as LandingSettings,
+    settings: {
+      ...parsedSettings,
+      whatsapp: parsedSettings.whatsapp || "+234 803 059 9638",
+    },
     courses: courseRows.map(rowToCourse),
     instructors: instructorRows.map(rowToInstructor),
     cohorts: cohortRows.map((c) => ({

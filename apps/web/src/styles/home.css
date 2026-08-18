@@ -8,6 +8,32 @@
 }
 .hero-copy .display span.today { color: var(--blue-ink); }
 .hero-copy .display span.tmrw { color: var(--red-ink); }
+.hero-copy .display.typewriter {
+  position: relative;
+}
+.typewriter-live { display: none; }
+.typewriter.is-typing .typewriter-ghost { visibility: hidden; }
+.typewriter.is-typing .typewriter-live {
+  display: block;
+  position: absolute;
+  inset: 0;
+}
+.type-cursor {
+  display: inline-block;
+  width: 0.085em;
+  height: 0.78em;
+  margin-left: 0.08em;
+  background: currentColor;
+  vertical-align: 0.04em;
+  animation: type-blink 0.72s step-end infinite;
+}
+.type-cursor.is-hidden {
+  visibility: hidden;
+  animation: none;
+}
+@keyframes type-blink {
+  50% { opacity: 0; }
+}
 .hero-copy { min-width: 0; max-width: 100%; }
 .hero-art {
   justify-self: center;
@@ -396,4 +422,5 @@
   .draw { stroke-dashoffset: 0; }
   .bar { transform: none; }
   .axis .line { transform: none; }
+  .type-cursor { animation: none; }
 }

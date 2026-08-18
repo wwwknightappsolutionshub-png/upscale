@@ -240,7 +240,7 @@ export const seedCatalog: Catalog = {
     },
     timezone: "GMT+1",
     email: "frank.g@example.org",
-    whatsapp: "",
+    whatsapp: "+234 803 059 9638",
     registrationOpen: true,
     closedMessage: "This intake is closed. Join the waitlist by writing to frank.g@example.org.",
     faqs: [

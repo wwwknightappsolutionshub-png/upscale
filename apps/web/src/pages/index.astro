@@ -54,8 +54,15 @@ const audiences = [
 >
   <section class="hero-split in">
     <div class="hero-copy">
-      <p class="kicker">Virtual institute</p>
-      <h1 class="display"><span class="today">Learn today,</span><br /><span class="tmrw">build tomorrow.</span></h1>
+      <p class="kicker">Upscale Cohort V1.0</p>
+      <h1 class="display typewriter" aria-label="Learn today, build tomorrow.">
+        <span class="typewriter-ghost" aria-hidden="true">
+          <span class="today">Learn today,</span><br /><span class="tmrw">build tomorrow.</span>
+        </span>
+        <span class="typewriter-live" aria-hidden="true">
+          <span class="today" data-type-today></span><br /><span class="tmrw" data-type-tmrw></span>
+        </span>
+      </h1>
       <p class="lede">{catalog.settings.heroLine}</p>
       <div class="axis" aria-hidden="true">
         <b>Today</b>
@@ -180,6 +187,42 @@ const audiences = [
   });
 
   if (motionOk) {
+    const headline = document.querySelector<HTMLElement>(".typewriter");
+    const todayEl = document.querySelector<HTMLElement>("[data-type-today]");
+    const tmrwEl = document.querySelector<HTMLElement>("[data-type-tmrw]");
+    if (headline && todayEl && tmrwEl) {
+      const cursor = document.createElement("span");
+      cursor.className = "type-cursor";
+      const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+      const placeCursor = (el: HTMLElement) => {
+        cursor.remove();
+        el.appendChild(cursor);
+      };
+      const typeInto = async (el: HTMLElement, text: string, ms = 78) => {
+        for (let i = 1; i <= text.length; i++) {
+          el.textContent = text.slice(0, i);
+          placeCursor(el);
+          await sleep(ms);
+        }
+      };
+      headline.classList.add("is-typing");
+      const run = async () => {
+        await typeInto(todayEl, "Learn today,");
+        await sleep(280);
+        await typeInto(tmrwEl, "build tomorrow.");
+        todayEl.textContent = "Learn today,";
+        tmrwEl.textContent = "build tomorrow.";
+        placeCursor(tmrwEl);
+        while (document.contains(headline)) {
+          cursor.classList.remove("is-hidden");
+          await sleep(5000);
+          cursor.classList.add("is-hidden");
+          await sleep(15000);
+        }
+      };
+      void run();
+    }
+
     const stats = document.querySelectorAll<HTMLElement>(".ledger strong[data-label]");
     const seen = new IntersectionObserver(
       (entries) => {

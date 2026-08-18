@@ -181,6 +181,7 @@ body.nav-open .menu-btn__bars::after { top: 0; transform: rotate(-45deg); }
   margin-top: auto;
   width: 100%;
   text-align: center;
+  border-radius: 999px;
 }
 
 .rail {
@@ -291,6 +292,27 @@ body.nav-open .rail {
   font-weight: 700;
 }
 .rail-meta a:hover { color: var(--blue-ink); }
+.rail-meta a.rail-wa {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  margin-top: 0.2rem;
+  color: var(--ink);
+  line-height: 0;
+  padding: 0.15rem;
+  border-radius: 0.35rem;
+  transition: color 0.18s ease, transform 0.18s ease;
+}
+.rail-meta a.rail-wa:hover,
+.rail-meta a.rail-wa:focus-visible {
+  color: #25d366;
+  transform: scale(1.08);
+}
+.wa-icon {
+  width: 1.55rem;
+  height: 1.55rem;
+  display: block;
+}
 
 .stage {
   padding: var(--stage-pad-y) var(--stage-pad-x) 2rem;
@@ -448,11 +470,45 @@ body.nav-open .rail {
   color: #111;
   text-decoration: none;
   font-weight: 800;
-  padding: 0.55rem 0.85rem;
+  padding: 0.55rem 1.15rem;
   white-space: nowrap;
   flex: 0 0 auto;
+  border-radius: 999px;
 }
 .dock .cta:hover { background: var(--blue); color: #fff; }
+
+.btn-pulse {
+  border-radius: 999px;
+  animation: seat-pulse 2s ease-in-out infinite;
+}
+.dock .cta.btn-pulse {
+  animation: seat-pulse-light 2s ease-in-out infinite;
+}
+.btn-pulse:hover,
+.dock .cta.btn-pulse:hover {
+  animation: none;
+}
+
+@keyframes seat-pulse {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(31, 94, 255, 0.42);
+  }
+  50% {
+    transform: scale(1.045);
+    box-shadow: 0 0 0 12px rgba(31, 94, 255, 0);
+  }
+}
+@keyframes seat-pulse-light {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.55);
+  }
+  50% {
+    transform: scale(1.06);
+    box-shadow: 0 0 0 12px rgba(255, 255, 255, 0);
+  }
+}
 
 .course-hero {
   margin: 0 calc(-1 * var(--stage-pad-x)) 2rem;
@@ -514,6 +570,7 @@ body.nav-open .rail {
 .course-hero .btn {
   background: #fff;
   color: var(--ink);
+  border-radius: 999px;
 }
 .course-hero .btn:hover {
   background: var(--paper);
@@ -1184,6 +1241,10 @@ body.nav-open .rail {
     transform: none;
     transition: opacity 0.15s ease;
   }
+  .btn-pulse,
+  .dock .cta.btn-pulse {
+    animation: none;
+  }
 }
 
 .schedule-head {
@@ -1375,6 +1436,9 @@ body.nav-open .rail {
     width: 100%;
     text-align: center;
   }
+  .dock .cta {
+    width: auto;
+  }
   .schedule-actions { flex-wrap: wrap; }
   .dock p { font-size: 0.72rem; }
   .faq-item summary { padding: 0.85rem 0.8rem; gap: 0.55rem; }
@@ -1399,5 +1463,9 @@ body.nav-open .rail {
   .schedule-card:hover {
     transform: none;
     transition: none;
+  }
+  .btn-pulse,
+  .dock .cta.btn-pulse {
+    animation: none;
   }
 }
