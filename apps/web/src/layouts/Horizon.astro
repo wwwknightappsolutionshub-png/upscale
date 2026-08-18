@@ -30,10 +30,34 @@ const open = catalog.settings.registrationOpen && course?.registrationOpen;
   </head>
   <body>
     <a class="skip" href="#stage">Skip to content</a>
+    <header class="site-bar">
+      <a class="brand" href="/" aria-label="UPSCALE home">
+        <img src="/brand/upscale-mark.png" width="64" height="64" alt="" />
+        <span class="word">
+          <strong>UPSCALE</strong>
+          <em><span class="today">learn today</span>, <span class="tmrw">build tomorrow</span></em>
+        </span>
+      </a>
+      <button
+        type="button"
+        class="menu-btn"
+        id="menu-toggle"
+        aria-controls="site-drawer"
+        aria-expanded="false"
+      >
+        <span class="menu-btn__bars" aria-hidden="true"></span>
+        <span class="menu-btn__label">Menu</span>
+      </button>
+    </header>
+    <div class="drawer-scrim" id="drawer-scrim" hidden></div>
     <div class="horizon">
-      <aside class="rail">
-        <a class="brand" href="/">
-          <img src="/brand/upscale-mark.png" width="64" height="64" alt="UPSCALE mark" />
+      <aside class="rail" id="site-drawer">
+        <div class="drawer-head">
+          <p class="kicker">Navigate</p>
+          <button type="button" class="menu-close" id="menu-close">Close</button>
+        </div>
+        <a class="brand rail-brand" href="/" aria-label="UPSCALE home">
+          <img src="/brand/upscale-mark.png" width="64" height="64" alt="" />
           <span class="word">
             <strong>UPSCALE</strong>
             <em><span class="today">learn today</span>, <span class="tmrw">build tomorrow</span></em>
@@ -59,6 +83,17 @@ const open = catalog.settings.registrationOpen && course?.registrationOpen;
           <a href="/privacy">Privacy</a>
           <a href="/terms">Terms</a>
         </nav>
+        {
+          open && course ? (
+            <a class="drawer-cta btn" href={`/register?course=${course.slug}`}>
+              Reserve a seat
+            </a>
+          ) : (
+            <a class="drawer-cta btn" href="/faq">
+              Intake closed
+            </a>
+          )
+        }
       </aside>
       <main class="stage" id="stage">
         <slot />
@@ -91,6 +126,64 @@ const open = catalog.settings.registrationOpen && course?.registrationOpen;
         )
       }
     </div>
+    <script>
+      const toggle = document.getElementById("menu-toggle");
+      const closeBtn = document.getElementById("menu-close");
+      const drawer = document.getElementById("site-drawer");
+      const scrim = document.getElementById("drawer-scrim");
+      const desktop = window.matchMedia("(min-width: 900px)");
+
+      function focusables() {
+        return [...drawer.querySelectorAll("a, button")].filter(
+          (el) => !el.hasAttribute("disabled") && el.offsetParent !== null,
+        );
+      }
+
+      function setOpen(open) {
+        if (desktop.matches) {
+          document.body.classList.remove("nav-open");
+          toggle?.setAttribute("aria-expanded", "false");
+          drawer?.removeAttribute("aria-hidden");
+          if (scrim) scrim.hidden = true;
+          return;
+        }
+        document.body.classList.toggle("nav-open", open);
+        toggle?.setAttribute("aria-expanded", String(open));
+        drawer?.setAttribute("aria-hidden", String(!open));
+        if (scrim) scrim.hidden = !open;
+        if (open) {
+          (closeBtn || focusables()[0])?.focus();
+        } else {
+          toggle?.focus();
+        }
+      }
+
+      toggle?.addEventListener("click", () => {
+        setOpen(!document.body.classList.contains("nav-open"));
+      });
+      closeBtn?.addEventListener("click", () => setOpen(false));
+      scrim?.addEventListener("click", () => setOpen(false));
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape" && document.body.classList.contains("nav-open")) {
+          setOpen(false);
+          return;
+        }
+        if (e.key !== "Tab" || !document.body.classList.contains("nav-open")) return;
+        const items = focusables();
+        if (!items.length) return;
+        const first = items[0];
+        const last = items[items.length - 1];
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
+      });
+      desktop.addEventListener("change", () => setOpen(false));
+      setOpen(false);
+    </script>
     <slot name="scripts" />
   </body>
 </html>

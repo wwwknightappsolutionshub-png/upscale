@@ -30,7 +30,7 @@ export const adminCss = /* css */ `
   --side: 15rem;
 }
 * { box-sizing: border-box; }
-html, body { margin: 0; }
+html, body { margin: 0; overflow-x: hidden; }
 body {
   font-family: "Anek Sans", sans-serif;
   background: var(--paper);
@@ -46,7 +46,7 @@ code {
 }
 .shell {
   display: grid;
-  grid-template-columns: var(--side) 1fr;
+  grid-template-columns: var(--side) minmax(0, 1fr);
   min-height: 100vh;
 }
 .side {
@@ -485,6 +485,17 @@ button.ghost:hover {
   .nav-group { display: none; }
   .split, .facts, .form-grid { grid-template-columns: 1fr; }
   main.pad { padding: 1.2rem; }
+}
+@media (max-width: 640px) {
+  .side {
+    padding: 0.85rem 0.75rem 1rem;
+  }
+  .side a { font-size: 0.82rem; padding: 0.38rem 0.5rem; }
+  .brand { width: 100%; margin-bottom: 0.25rem; }
+  main.pad { padding: 1rem 0.85rem 2.5rem; }
+  .page-head h1 { font-size: 1.55rem; }
+  table { font-size: 0.84rem; }
+  button, .ghost { max-width: 100%; }
 }
 `;
 

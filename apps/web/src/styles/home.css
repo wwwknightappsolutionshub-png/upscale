@@ -3,12 +3,24 @@
   gap: 1.4rem;
   align-items: center;
   padding-bottom: 1.2rem;
+  min-width: 0;
+  max-width: 100%;
 }
 .hero-copy .display span.today { color: var(--blue-ink); }
 .hero-copy .display span.tmrw { color: var(--red-ink); }
+.hero-copy { min-width: 0; max-width: 100%; }
 .hero-art {
   justify-self: center;
-  width: min(100%, 22rem);
+  width: min(100%, 16rem);
+  max-width: 100%;
+  overflow: hidden;
+}
+.hero-art .mark,
+.hero-art svg {
+  width: 100%;
+  max-width: 100%;
+  height: auto;
+  overflow: hidden;
 }
 .axis {
   display: flex;
@@ -39,9 +51,10 @@
 }
 .slab {
   font-weight: 800;
-  font-size: clamp(2.6rem, 8vw, 5rem);
+  font-size: clamp(2rem, 8vw, 5rem);
   letter-spacing: -0.06em;
-  line-height: 0.86;
+  line-height: 0.9;
+  overflow-wrap: anywhere;
   margin: 2.4rem 0 0.85rem;
 }
 .slab em {
@@ -59,18 +72,18 @@
   margin: 1.6rem 0 0;
   padding: 0;
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr;
   border-top: var(--seam) solid var(--ink);
   border-bottom: var(--seam) solid var(--ink);
   overflow: hidden;
-  width: calc(100% + 2.2rem);
+  width: calc(100% + (2 * var(--stage-pad-x)));
   max-width: none;
-  margin-left: -1.1rem;
-  margin-right: -1.1rem;
+  margin-left: calc(-1 * var(--stage-pad-x));
+  margin-right: calc(-1 * var(--stage-pad-x));
 }
 .ledger li {
-  padding: 1.35rem 1.5rem;
-  min-height: 6.5rem;
+  padding: 1.1rem 1.15rem;
+  min-height: 0;
 }
 .ledger li:nth-child(1) {
   background: linear-gradient(160deg, #eef3ff, #fff);
@@ -93,15 +106,12 @@
 }
 .ledger li:nth-child(4) strong { color: #fff; }
 .ledger li:nth-child(4) span { color: rgba(255, 255, 255, 0.78); }
-.ledger li:nth-child(odd) {
-  border-right: var(--seam) solid var(--ink);
-}
-.ledger li:nth-child(-n + 2) {
+.ledger li:not(:last-child) {
   border-bottom: var(--seam) solid var(--ink);
 }
 .ledger strong {
   display: block;
-  font-size: clamp(1.8rem, 6vw, 2.6rem);
+  font-size: clamp(1.6rem, 6vw, 2.6rem);
   font-weight: 800;
   letter-spacing: -0.05em;
   line-height: 0.95;
@@ -126,7 +136,7 @@
 
 .ways-band {
   background: var(--ink);
-  margin: 1.5rem 0 0;
+  margin: 1.5rem calc(-1 * var(--stage-pad-x)) 0;
   color: #fff;
 }
 .ways-head {
@@ -142,7 +152,7 @@
 .ways-head .slab em { color: #8fb0ff; }
 .ways {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: 1fr;
   gap: 2px;
   background: var(--ink);
   margin: 0;
@@ -191,9 +201,6 @@
 }
 .way:hover .mark {
   transform: translateY(-0.15rem) scale(1.08);
-}
-@media (max-width: 799px) {
-  .ways { grid-template-columns: 1fr; }
 }
 
 .tracks {
@@ -248,7 +255,7 @@
 .mark {
   transition: transform 0.45s cubic-bezier(0.22, 1.2, 0.36, 1);
 }
-.mark svg { width: 100%; height: auto; display: block; overflow: visible; }
+.mark svg { width: 100%; height: auto; display: block; overflow: hidden; max-width: 100%; }
 
 .mark-rise .mark-float {
   transform-origin: 110px 208px;
@@ -302,20 +309,39 @@
   100% { box-shadow: 0 0 0 0.7rem rgba(227, 28, 36, 0); }
 }
 
+@media (min-width: 480px) {
+  .ledger {
+    grid-template-columns: 1fr 1fr;
+  }
+  .ledger li {
+    padding: 1.35rem 1.5rem;
+    min-height: 6.5rem;
+  }
+  .ledger li:not(:last-child) { border-bottom: 0; }
+  .ledger li:nth-child(odd) {
+    border-right: var(--seam) solid var(--ink);
+  }
+  .ledger li:nth-child(-n + 2) {
+    border-bottom: var(--seam) solid var(--ink);
+  }
+}
+
 @media (min-width: 900px) {
   .hero-split {
-    grid-template-columns: minmax(0, 1.05fr) minmax(12rem, 0.8fr);
+    grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.8fr);
     gap: 2rem;
     min-height: 78vh;
     padding-bottom: 0;
   }
   .hero-art { width: min(100%, 26rem); }
 
+  .ways { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+
   .ledger {
-    grid-template-columns: repeat(4, 1fr);
-    width: calc(100% + 6rem);
-    margin-left: -3rem;
-    margin-right: -3rem;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    width: calc(100% + (2 * var(--stage-pad-x)));
+    margin-left: calc(-1 * var(--stage-pad-x));
+    margin-right: calc(-1 * var(--stage-pad-x));
   }
   .ledger li,
   .ledger li:nth-child(odd),
@@ -325,10 +351,10 @@
     padding: 1.55rem 1.65rem;
   }
   .ledger li:last-child { border-right: 0; }
-  .ledger strong { font-size: 2.7rem; }
+  .ledger strong { font-size: clamp(1.8rem, 2.4vw, 2.7rem); }
 
   .tracks {
-    grid-template-columns: 1.35fr 1fr;
+    grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
     grid-template-rows: auto auto auto;
   }
   .track-graphic-design {
