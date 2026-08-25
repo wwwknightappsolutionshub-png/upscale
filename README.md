@@ -49,5 +49,6 @@ Blue `#1F5EFF` · Red `#E31C24` · Ink `#111111`
 
 1. Put the API on a small Node host with a persistent disk for SQLite (or switch `DATABASE_URL` to libSQL/Postgres later).
 2. Set `WEB_ORIGIN`, `PUBLIC_SITE_URL`, `PUBLIC_API_URL`, `SESSION_SECRET`, and `BUILD_TOKEN`.
-3. Build the Astro app (`npm run build`) and serve `apps/web/dist` on a CDN.
-4. Point the desk at `https://api.your-domain/admin` and do not index it.
+3. Build the Astro app (`npm run build`) and serve `apps/web/dist` on Nginx/CDN.
+4. Point the desk at `https://your-domain/admin` and do not index it.
+5. Desk content saves (courses, landing, instructors, cohorts) rebuild the public site automatically when `PUBLISH_ON_SAVE=1`. You can also click **Publish public site now** on the desk home.

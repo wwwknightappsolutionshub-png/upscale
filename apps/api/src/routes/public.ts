@@ -44,6 +44,7 @@ publicRoutes.post("/register", async (c) => {
       fieldErrors.name?.[0] ||
       fieldErrors.email?.[0] ||
       fieldErrors.phone?.[0] ||
+      fieldErrors.country?.[0] ||
       fieldErrors.state?.[0] ||
       fieldErrors.city?.[0] ||
       fieldErrors.courseSlug?.[0] ||
@@ -101,6 +102,7 @@ publicRoutes.post("/register", async (c) => {
     name: parsed.data.name,
     email,
     phone,
+    country: parsed.data.country,
     state: parsed.data.state,
     city: parsed.data.city,
     courseSlug: parsed.data.courseSlug,

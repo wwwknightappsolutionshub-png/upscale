@@ -35,6 +35,7 @@ import {
 import { hashPassword } from "../lib/password.ts";
 import { loadEmailTemplates, renderEmail, saveEmailTemplate } from "../lib/email-templates.ts";
 import { sampleRegistrationVars } from "@upscale/shared/email-templates";
+import { publishSite } from "../lib/publish-site.ts";
 
 export const adminRoutes = new Hono();
 
@@ -82,6 +83,39 @@ function forbid(c: { html: (html: string, status?: number) => Response }, admin:
   return c.html(desk(admin, "Forbidden", `<p class="err">${esc(message)}</p>`, "/admin"), 403);
 }
 
+function flashBanner(c: { req: { query: (k: string) => string | undefined } }) {
+  const saved = c.req.query("saved");
+  const published = c.req.query("published");
+  const publishError = c.req.query("publishError");
+  const ok = c.req.query("ok");
+  if (publishError) {
+    return `<p class="banner bad">${esc(publishError)}</p>`;
+  }
+  if (published === "1") {
+    return `<p class="banner ok">Saved and published to the public site.</p>`;
+  }
+  if (saved === "1") {
+    return `<p class="banner ok">Saved in the desk.</p>`;
+  }
+  if (ok) return `<p class="banner ok">${esc(ok)}</p>`;
+  return "";
+}
+
+async function publishAndRedirect(path: string) {
+  const result = await publishSite();
+  const q = result.ok
+    ? "saved=1&published=1"
+    : `saved=1&publishError=${encodeURIComponent(result.message)}`;
+  return `${path}${path.includes("?") ? "&" : "?"}${q}`;
+}
+
+function formActions(label: string) {
+  return `<div class="form-actions">
+    <button type="submit">${esc(label)}</button>
+    <p class="hint">Saving also rebuilds the public website so visitors see your changes.</p>
+  </div>`;
+}
+
 adminRoutes.get("/", async (c) => {
   const catalog = await loadCatalog();
   const allStudents = await db.select().from(students).orderBy(desc(students.createdAt));
@@ -91,6 +125,13 @@ adminRoutes.get("/", async (c) => {
   return c.html(
     desk(admin, "Desk", `
       ${pageHead("Desk", "Pipeline for the current intakes. Approve evidence before a seat is taken.")}
+      ${flashBanner(c)}
+      <div class="toolbar">
+        <form method="post" action="/admin/publish">
+          <button type="submit">Publish public site now</button>
+        </form>
+        <p class="hint">Use this if you edited content and the live site still looks stale.</p>
+      </div>
       <ul class="stats">
         ${pipe("Registered", counts.registered)}
         ${pipe("Evidence", counts.evidence_submitted)}
@@ -191,10 +232,10 @@ adminRoutes.get("/students", async (c) => {
 
 adminRoutes.get("/students.csv", async (c) => {
   const rows = await db.select().from(students).orderBy(desc(students.createdAt));
-  const header = "name,email,phone,state,city,course,reference,status,motivation,created\n";
+  const header = "name,email,phone,country,state,city,course,reference,status,motivation,created\n";
   const body = rows
     .map((s) =>
-      [s.name, s.email, s.phone, s.state, s.city, s.courseSlug, s.referenceCode, s.status, s.motivation, s.createdAt]
+      [s.name, s.email, s.phone, s.country, s.state, s.city, s.courseSlug, s.referenceCode, s.status, s.motivation, s.createdAt]
         .map(csv)
         .join(","),
     )
@@ -249,7 +290,7 @@ adminRoutes.get("/accounts", async (c) => {
                   <a href="/admin/students/${s.id}">${esc(s.name)}</a>
                   <div class="sub">${esc(s.email)} · ${esc(s.phone)}</div>
                 </td>
-                <td>${esc(s.state || "—")}${s.city ? `, ${esc(s.city)}` : ""}</td>
+                <td>${esc(s.country || "—")}${s.state ? `, ${esc(s.state)}` : ""}${s.city ? `, ${esc(s.city)}` : ""}</td>
                 <td>${esc(course?.name || s.courseSlug)}</td>
                 <td><code>${esc(s.referenceCode)}</code></td>
                 <td>${statusBadge(s.status)}</td>
@@ -279,7 +320,7 @@ adminRoutes.get("/students/:id", async (c) => {
   const course = catalog.courses.find((x) => x.slug === student.courseSlug);
   return c.html(
     desk(admin, student.name, `
-      ${pageHead(esc(student.name), `${esc(student.email)} · ${esc(student.phone)} · ${esc(student.state || "—")}${student.city ? `, ${esc(student.city)}` : ""}`)}
+      ${pageHead(esc(student.name), `${esc(student.email)} · ${esc(student.phone)} · ${esc(student.country || "—")}${student.state ? `, ${esc(student.state)}` : ""}${student.city ? `, ${esc(student.city)}` : ""}`)}
       <div class="panel">
       <dl class="facts">
         <div><dt>Course</dt><dd>${esc(course?.name || student.courseSlug)}</dd></div>
@@ -424,6 +465,7 @@ adminRoutes.get("/courses/:id", async (c) => {
   return c.html(
     desk(admin, row.name, `
       ${pageHead(esc(row.name), "Update what appears on the public course page.")}
+      ${flashBanner(c)}
       <div class="panel">
       <form method="post" class="stack">
         <div class="form-grid">
@@ -439,8 +481,8 @@ adminRoutes.get("/courses/:id", async (c) => {
         <label class="full">Tools (one per line)<textarea name="tools" rows="4">${esc(JSON.parse(row.toolsJson).join("\n"))}</textarea></label>
         <label class="full">Prerequisites<textarea name="prerequisites" rows="4">${esc(row.prerequisites)}</textarea></label>
         <label class="full">OG description<textarea name="ogDescription" rows="3">${esc(row.ogDescription)}</textarea></label>
-        <label class="full">Outline JSON<textarea name="outlineJson" rows="16" required>${esc(JSON.stringify(JSON.parse(row.outlineJson), null, 2))}</textarea></label>
-        <button type="submit">Save course</button>
+        <label class="full">Outline JSON<textarea name="outlineJson" rows="12" required>${esc(JSON.stringify(JSON.parse(row.outlineJson), null, 2))}</textarea></label>
+        ${formActions("Save course")}
       </form>
       </div>
     `, "/admin/courses"),
@@ -478,7 +520,7 @@ adminRoutes.post("/courses/:id", async (c) => {
     })
     .where(eq(courses.id, id));
   await audit(admin.email, "course_update", "course", id);
-  return c.redirect(`/admin/courses/${id}`);
+  return c.redirect(await publishAndRedirect(`/admin/courses/${id}`));
 });
 
 adminRoutes.get("/instructors", async (c) => {
@@ -487,6 +529,7 @@ adminRoutes.get("/instructors", async (c) => {
   return c.html(
     desk(admin, "Instructors", `
       ${pageHead("Instructors", "Update instructor names, roles, and bios shown on the public site.")}
+      ${flashBanner(c)}
       <div class="instructor-grid">
       ${catalog.instructors
         .map(
@@ -502,7 +545,7 @@ adminRoutes.get("/instructors", async (c) => {
                 <option value="red" ${i.accent === "red" ? "selected" : ""}>Red</option>
               </select>
             </label>
-            <button type="submit">Save instructor</button>
+            ${formActions("Save instructor")}
           </form>`,
         )
         .join("")}
@@ -528,7 +571,7 @@ adminRoutes.post("/instructors/:id", async (c) => {
     })
     .where(eq(instructors.id, c.req.param("id")));
   await audit(admin.email, "instructor_update", "instructor", c.req.param("id"), { name });
-  return c.redirect("/admin/instructors");
+  return c.redirect(await publishAndRedirect("/admin/instructors"));
 });
 
 adminRoutes.get("/cohorts", async (c) => {
@@ -538,6 +581,7 @@ adminRoutes.get("/cohorts", async (c) => {
   return c.html(
     desk(admin, "Cohorts", `
       ${pageHead("Cohorts", "Edit dates, capacity, and pricing for each open intake.")}
+      ${flashBanner(c)}
       <div class="cohort-grid">
       ${catalog.cohorts
         .map((co) => {
@@ -556,7 +600,7 @@ adminRoutes.get("/cohorts", async (c) => {
               <label>Currency<input name="currency" value="${esc(co.currency)}" required /></label>
             </div>
             <p class="sub">Seats taken: ${co.seatsTaken} (not edited here)</p>
-            <button type="submit">Save cohort</button>
+            ${formActions("Save cohort")}
           </form>`;
         })
         .join("")}
@@ -583,7 +627,7 @@ adminRoutes.post("/cohorts/:id", async (c) => {
     })
     .where(eq(cohorts.id, c.req.param("id")));
   await audit(admin.email, "cohort_update", "cohort", c.req.param("id"));
-  return c.redirect("/admin/cohorts");
+  return c.redirect(await publishAndRedirect("/admin/cohorts"));
 });
 
 adminRoutes.get("/landing", async (c) => {
@@ -594,6 +638,7 @@ adminRoutes.get("/landing", async (c) => {
   return c.html(
     desk(admin, "Landing", `
       ${pageHead("Landing copy", "Site-wide messaging, bank details, FAQs, and proof stats.")}
+      ${flashBanner(c)}
       <div class="panel">
       <form method="post" class="stack">
         <div class="form-grid">
@@ -616,7 +661,7 @@ adminRoutes.get("/landing", async (c) => {
         <label class="full"><textarea name="faqs" rows="14" required>${esc(JSON.stringify(s.faqs, null, 2))}</textarea></label>
         <h2>Proof stats (JSON)</h2>
         <label class="full"><textarea name="proof" rows="8" required>${esc(JSON.stringify(s.proof, null, 2))}</textarea></label>
-        <button type="submit">Save landing</button>
+        ${formActions("Save landing")}
       </form>
       </div>
     `, "/admin/landing"),
@@ -656,7 +701,16 @@ adminRoutes.post("/landing", async (c) => {
   };
   await db.update(settings).set({ json: JSON.stringify(next) }).where(eq(settings.id, "main"));
   await audit(admin.email, "landing_update", "settings", "main");
-  return c.redirect("/admin/landing");
+  return c.redirect(await publishAndRedirect("/admin/landing"));
+});
+
+adminRoutes.post("/publish", async (c) => {
+  const admin = c.get("admin");
+  if (!canManageSiteContent(roleOf(admin))) return forbid(c, admin, "Only admins can publish the site.");
+  const result = await publishSite();
+  await audit(admin.email, "site_publish", "site", "public", { ok: result.ok });
+  if (result.ok) return c.redirect("/admin?published=1");
+  return c.redirect(`/admin?publishError=${encodeURIComponent(result.message)}`);
 });
 
 adminRoutes.get("/emails", async (c) => {

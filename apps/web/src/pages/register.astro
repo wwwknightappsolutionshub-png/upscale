@@ -55,6 +55,11 @@ const courseFees = Object.fromEntries(
         <span class="field-error" data-for="phone" hidden></span>
       </label>
       <label>
+        Country
+        <input name="country" required minlength="2" maxlength="80" autocomplete="country-name" placeholder="Nigeria" />
+        <span class="field-error" data-for="country" hidden></span>
+      </label>
+      <label>
         State
         <select name="state" id="state-select" required>
           <option value="">Select state</option>

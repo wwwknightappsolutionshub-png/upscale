@@ -46,6 +46,7 @@ export const registerSchema = z
       .string()
       .trim()
       .refine(isValidNgPhone, "Enter a valid Nigerian phone number (e.g. 08012345678)."),
+    country: z.string().trim().min(2, "Enter your country.").max(80),
     state: z.string().trim().min(2, "Select your state."),
     city: z.string().trim().min(2, "Select your city.").max(80),
     courseSlug: z.enum(COURSE_SLUGS),

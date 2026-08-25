@@ -71,6 +71,7 @@ export const students = sqliteTable("students", {
   name: text("name").notNull(),
   email: text("email").notNull(),
   phone: text("phone").notNull(),
+  country: text("country").notNull().default(""),
   state: text("state").notNull().default(""),
   city: text("city").notNull().default(""),
   courseSlug: text("course_slug").notNull(),

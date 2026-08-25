@@ -99,6 +99,8 @@ code {
 main.pad {
   padding: 2rem 2.4rem 4rem;
   max-width: 72rem;
+  width: 100%;
+  min-width: 0;
 }
 .page-head { margin-bottom: 1.5rem; }
 .page-head .kicker {
@@ -156,6 +158,8 @@ main.pad {
   background: var(--white);
   border: 1px solid var(--line);
   padding: 1rem 1.1rem 1.1rem;
+  overflow-x: auto;
+  max-width: 100%;
 }
 .panel h2 {
   font-weight: 800;
@@ -238,6 +242,8 @@ input, textarea, select {
   border: 1px solid var(--line);
   background: var(--white);
   border-radius: 2px;
+  width: 100%;
+  max-width: 100%;
 }
 input:focus, textarea:focus, select:focus {
   outline: 2px solid var(--blue);
@@ -386,6 +392,68 @@ button.ghost:hover {
   color: #187a34;
   font-weight: 700;
 }
+.banner.bad {
+  background: var(--red-soft);
+  border-color: var(--red);
+  color: var(--red);
+  font-weight: 700;
+}
+.form-actions {
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem 1rem;
+  margin-top: 0.5rem;
+  padding: 0.85rem 0 0.15rem;
+  background: linear-gradient(180deg, rgba(247, 245, 242, 0), var(--paper) 28%);
+}
+.panel .form-actions {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0), #fff 28%);
+  border-top: 1px solid var(--line);
+  padding: 0.9rem 0 0.1rem;
+  margin-top: 0.75rem;
+}
+.form-actions .hint { margin: 0; max-width: 28rem; }
+.form-actions button { flex: 0 0 auto; }
+.topbar {
+  display: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  background: var(--ink);
+  color: #fff;
+  position: sticky;
+  top: 0;
+  z-index: 30;
+}
+.topbar .brand { margin: 0; }
+.nav-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: transparent;
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  padding: 0.45rem 0.7rem;
+  width: auto;
+  font-size: 0.82rem;
+}
+.nav-toggle:hover { background: rgba(255, 255, 255, 0.08); color: #fff; }
+.side-scrim {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(17, 17, 17, 0.45);
+  z-index: 35;
+  border: 0;
+  padding: 0;
+  width: auto;
+  cursor: pointer;
+}
 .login {
   min-height: 100vh;
   display: grid;
@@ -474,28 +542,63 @@ button.ghost:hover {
   .email-side { position: static; }
 }
 @media (max-width: 900px) {
+  .topbar { display: flex; }
   .shell { grid-template-columns: 1fr; }
   .side {
-    position: static;
-    height: auto;
-    flex-direction: row;
-    flex-wrap: wrap;
-    gap: 0.35rem;
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 40;
+    width: min(18rem, 86vw);
+    height: 100dvh;
+    transform: translateX(-105%);
+    transition: transform 0.22s ease;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    gap: 0.15rem;
   }
-  .nav-group { display: none; }
+  body.nav-open .side { transform: translateX(0); }
+  body.nav-open .side-scrim { display: block; }
+  .nav-group { display: block; }
   .split, .facts, .form-grid { grid-template-columns: 1fr; }
-  main.pad { padding: 1.2rem; }
+  .form-grid .full { grid-column: auto; }
+  main.pad { padding: 1.15rem 1rem 5rem; max-width: none; }
+  .panel { padding: 0.9rem; }
+  .instructor-grid,
+  .cohort-grid,
+  .course-grid {
+    grid-template-columns: 1fr;
+  }
+  .form-actions {
+    position: sticky;
+    bottom: 0;
+    margin-left: -1rem;
+    margin-right: -1rem;
+    padding: 0.85rem 1rem calc(0.85rem + env(safe-area-inset-bottom, 0px));
+    background: #fff;
+    border-top: 1px solid var(--line);
+    box-shadow: 0 -8px 24px rgba(17, 17, 17, 0.06);
+  }
+  .form-actions button { width: 100%; }
+  .toolbar { flex-direction: column; align-items: stretch; }
+  .toolbar button { width: 100%; }
 }
 @media (max-width: 640px) {
-  .side {
-    padding: 0.85rem 0.75rem 1rem;
-  }
-  .side a { font-size: 0.82rem; padding: 0.38rem 0.5rem; }
-  .brand { width: 100%; margin-bottom: 0.25rem; }
-  main.pad { padding: 1rem 0.85rem 2.5rem; }
+  .side { padding: 1rem 0.85rem 1.2rem; }
+  .side a { font-size: 0.9rem; padding: 0.55rem 0.65rem; }
+  .brand { width: auto; margin-bottom: 1rem; }
+  main.pad { padding: 1rem 0.85rem 5.5rem; }
+  .page-head { margin-bottom: 1.1rem; }
   .page-head h1 { font-size: 1.55rem; }
+  .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   table { font-size: 0.84rem; }
+  th, td { padding: 0.55rem 0.5rem; }
   button, .ghost { max-width: 100%; }
+  .evidence-card header { flex-direction: column; }
+  .login form { padding: 1.35rem 1.15rem; width: min(24rem, 94vw); }
+}
+@media (min-width: 901px) {
+  body.nav-open .side-scrim { display: none; }
 }
 `;
 
@@ -543,8 +646,13 @@ export function layout(title: string, who: string, body: string, active = "/admi
   <link rel="stylesheet" href="/admin/css" />
 </head>
 <body>
+  <header class="topbar">
+    <div class="brand">UPSCALE <span>desk</span></div>
+    <button type="button" class="nav-toggle" id="nav-toggle" aria-controls="side-nav" aria-expanded="false">Menu</button>
+  </header>
+  <button type="button" class="side-scrim" id="side-scrim" hidden aria-label="Close menu"></button>
   <div class="shell">
-    <aside class="side">
+    <aside class="side" id="side-nav">
       <div class="brand">UPSCALE <span>desk</span></div>
       ${links}
       <form method="post" action="/admin/logout" style="margin-top:auto">
@@ -554,6 +662,33 @@ export function layout(title: string, who: string, body: string, active = "/admi
     </aside>
     <main class="pad">${body}</main>
   </div>
+  <script>
+    (function () {
+      var toggle = document.getElementById("nav-toggle");
+      var scrim = document.getElementById("side-scrim");
+      var desktop = window.matchMedia("(min-width: 901px)");
+      function setOpen(open) {
+        if (desktop.matches) {
+          document.body.classList.remove("nav-open");
+          if (toggle) toggle.setAttribute("aria-expanded", "false");
+          if (scrim) scrim.hidden = true;
+          return;
+        }
+        document.body.classList.toggle("nav-open", open);
+        if (toggle) toggle.setAttribute("aria-expanded", String(open));
+        if (scrim) scrim.hidden = !open;
+      }
+      toggle && toggle.addEventListener("click", function () {
+        setOpen(!document.body.classList.contains("nav-open"));
+      });
+      scrim && scrim.addEventListener("click", function () { setOpen(false); });
+      document.addEventListener("keydown", function (e) {
+        if (e.key === "Escape") setOpen(false);
+      });
+      desktop.addEventListener("change", function () { setOpen(false); });
+      setOpen(false);
+    })();
+  </script>
 </body>
 </html>`;
 }

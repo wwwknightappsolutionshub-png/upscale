@@ -66,6 +66,7 @@ CREATE TABLE IF NOT EXISTS students (
   name TEXT NOT NULL,
   email TEXT NOT NULL,
   phone TEXT NOT NULL,
+  country TEXT NOT NULL DEFAULT '',
   city TEXT NOT NULL DEFAULT '',
   course_slug TEXT NOT NULL,
   cohort_id TEXT NOT NULL,
@@ -110,6 +111,11 @@ export async function ensureSchema() {
   }
   try {
     await client.execute("ALTER TABLE students ADD COLUMN state TEXT NOT NULL DEFAULT ''");
+  } catch {
+    /* column exists */
+  }
+  try {
+    await client.execute("ALTER TABLE students ADD COLUMN country TEXT NOT NULL DEFAULT ''");
   } catch {
     /* column exists */
   }
