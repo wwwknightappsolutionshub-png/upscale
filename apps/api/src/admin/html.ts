@@ -517,13 +517,19 @@ button.ghost:hover {
 .tag-btn {
   border: 1px solid var(--line);
   background: #fff;
+  color: var(--ink);
   border-radius: 999px;
   padding: 0.25rem 0.55rem;
   font-size: 0.72rem;
+  font-weight: 600;
   font-family: ui-monospace, monospace;
   cursor: pointer;
 }
-.tag-btn:hover { border-color: var(--blue); color: var(--blue); }
+.tag-btn:hover {
+  background: var(--blue-soft);
+  border-color: var(--blue);
+  color: var(--blue);
+}
 .email-text-fallback {
   width: 100%;
   font-family: ui-monospace, monospace;
