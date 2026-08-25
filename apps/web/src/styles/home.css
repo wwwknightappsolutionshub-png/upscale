@@ -37,13 +37,13 @@
 .hero-copy { min-width: 0; max-width: 100%; }
 .hero-art {
   justify-self: center;
-  width: min(100%, 22rem);
+  width: min(100%, 16rem);
   max-width: 100%;
   overflow: hidden;
 }
 .hero-mark {
   width: 100%;
-  aspect-ratio: 553 / 228;
+  aspect-ratio: 1;
   overflow: hidden;
   background: #000;
   border-radius: 0.35rem;
