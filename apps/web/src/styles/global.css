@@ -222,7 +222,7 @@ body.nav-open .rail {
   width: 3.1rem;
   height: 3.1rem;
   object-fit: contain;
-  background: #000;
+  background: transparent;
   flex: 0 0 auto;
 }
 .word {

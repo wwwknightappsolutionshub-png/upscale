@@ -39,14 +39,13 @@
   justify-self: center;
   width: min(100%, 16rem);
   max-width: 100%;
-  overflow: hidden;
+  overflow: visible;
 }
 .hero-mark {
   width: 100%;
   aspect-ratio: 1;
-  overflow: hidden;
-  background: #000;
-  border-radius: 0.35rem;
+  overflow: visible;
+  background: transparent;
 }
 .hero-mark__img {
   display: block;
@@ -54,23 +53,28 @@
   height: 100%;
   object-fit: contain;
   transform-origin: center bottom;
-  transform: scaleY(0);
-  opacity: 0;
+  will-change: transform, opacity;
+  animation: hero-mark-grow 2.6s cubic-bezier(0.45, 0.05, 0.25, 1) infinite;
 }
 .hero-split.in .hero-mark__img {
-  animation: hero-mark-grow 1.15s cubic-bezier(0.22, 1, 0.36, 1) 0.12s forwards;
+  animation: hero-mark-grow 2.6s cubic-bezier(0.45, 0.05, 0.25, 1) infinite;
 }
 @keyframes hero-mark-grow {
   0% {
-    transform: scaleY(0);
-    opacity: 0.35;
+    transform: scaleY(0.28) scaleX(0.92);
+    opacity: 0.45;
   }
-  55% {
+  42% {
+    transform: scaleY(1) scaleX(1);
+    opacity: 1;
+  }
+  58% {
+    transform: scaleY(1) scaleX(1);
     opacity: 1;
   }
   100% {
-    transform: scaleY(1);
-    opacity: 1;
+    transform: scaleY(0.28) scaleX(0.92);
+    opacity: 0.45;
   }
 }
 .hero-art .mark,
