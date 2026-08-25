@@ -10,7 +10,7 @@ interface Props {
 const site = import.meta.env.PUBLIC_SITE_URL || Astro.site?.toString() || "http://localhost:4321";
 const path = Astro.url.pathname;
 const canonical = Astro.props.canonical || new URL(path, site).toString();
-const og = new URL("/brand/upscale-mark.png", site).toString();
+const og = new URL("/brand/upscale-logo.png", site).toString();
 const { title, description, noindex, jsonLd } = Astro.props;
 ---
 <meta charset="utf-8" />
@@ -24,10 +24,11 @@ const { title, description, noindex, jsonLd } = Astro.props;
 <meta property="og:description" content={description} />
 <meta property="og:url" content={canonical} />
 <meta property="og:image" content={og} />
-<meta name="twitter:card" content="summary" />
+<meta name="twitter:card" content="summary_large_image" />
 <meta name="twitter:title" content={title} />
 <meta name="twitter:description" content={description} />
+<meta name="twitter:image" content={og} />
 <link rel="icon" href="/favicon.png" type="image/png" />
-<link rel="apple-touch-icon" href="/favicon.png" />
+<link rel="apple-touch-icon" href="/brand/upscale-mark.png" />
 <link rel="preload" href="/fonts/anek-sans-extrabold.ttf" as="font" type="font/ttf" crossorigin />
 {jsonLd && <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} />}
