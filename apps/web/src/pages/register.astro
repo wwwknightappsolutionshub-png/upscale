@@ -1,7 +1,7 @@
 ---
 import Horizon from "../layouts/Horizon.astro";
 import WavingPalmIllustration from "../components/WavingPalmIllustration.astro";
-import { COURSE_SLUGS, formatMoney, motivationLabel, NIGERIA_STATE_NAMES, NIGERIA_STATES } from "@upscale/shared";
+import { COUNTRIES, COURSE_SLUGS, DEFAULT_COUNTRY, formatMoney, motivationLabel, NIGERIA_STATE_NAMES, NIGERIA_STATES } from "@upscale/shared";
 import { courseOf, getCatalog, apiUrl } from "../lib/catalog";
 
 const catalog = await getCatalog();
@@ -56,10 +56,16 @@ const courseFees = Object.fromEntries(
       </label>
       <label>
         Country
-        <input name="country" required minlength="2" maxlength="80" autocomplete="country-name" placeholder="Nigeria" />
+        <select name="country" id="country-select" required>
+          {COUNTRIES.map((country) => (
+            <option value={country} selected={country === DEFAULT_COUNTRY}>
+              {country}
+            </option>
+          ))}
+        </select>
         <span class="field-error" data-for="country" hidden></span>
       </label>
-      <label>
+      <label id="state-field">
         State
         <select name="state" id="state-select" required>
           <option value="">Select state</option>
@@ -69,7 +75,7 @@ const courseFees = Object.fromEntries(
         </select>
         <span class="field-error" data-for="state" hidden></span>
       </label>
-      <label>
+      <label id="city-field">
         City
         <select name="city" id="city-select" required disabled>
           <option value="">Select state first</option>
@@ -154,7 +160,7 @@ const courseFees = Object.fromEntries(
     </div>
   </div>
 
-  <script slot="scripts" define:vars={{ api: apiUrl, courseFees, nigeriaLocations: NIGERIA_STATES }}>
+  <script slot="scripts" define:vars={{ api: apiUrl, courseFees, nigeriaLocations: NIGERIA_STATES, defaultCountry: DEFAULT_COUNTRY }}>
   const form = document.getElementById("register-form");
   const registerIntro = document.getElementById("register-intro");
   const registerRule = document.getElementById("register-rule");
@@ -167,13 +173,45 @@ const courseFees = Object.fromEntries(
   const modalOk = document.getElementById("modal-ok");
   const formError = document.getElementById("form-error");
   const uploadError = document.getElementById("upload-error");
+  const countrySelect = document.getElementById("country-select");
+  const stateField = document.getElementById("state-field");
+  const cityField = document.getElementById("city-field");
   const stateSelect = document.getElementById("state-select");
   const citySelect = document.getElementById("city-select");
   const courseSelect = document.getElementById("course-select");
   const courseFee = document.getElementById("course-fee");
+  const phoneInput = form?.querySelector('input[name="phone"]');
 
   let uploadToken = "";
   let countdownTimer = null;
+
+  function isNigeria(country) {
+    return String(country || "").trim().toLowerCase() === "nigeria";
+  }
+
+  function setNigeriaLocationFields(show) {
+    if (stateField) stateField.hidden = !show;
+    if (cityField) cityField.hidden = !show;
+    if (stateSelect) {
+      stateSelect.required = show;
+      if (!show) stateSelect.value = "";
+    }
+    if (citySelect) {
+      citySelect.required = show;
+      citySelect.value = "";
+      citySelect.disabled = true;
+      citySelect.innerHTML = show
+        ? '<option value="">Select state first</option>'
+        : '<option value="">Not required</option>';
+    }
+    if (phoneInput) {
+      phoneInput.placeholder = show ? "08012345678" : "+1234567890";
+    }
+  }
+
+  function syncCountryFields() {
+    setNigeriaLocationFields(isNigeria(countrySelect?.value));
+  }
 
   function showModal() {
     uploadModal.hidden = false;
@@ -222,6 +260,9 @@ const courseFees = Object.fromEntries(
 
   stateSelect?.addEventListener("change", () => populateCities(stateSelect.value));
 
+  countrySelect?.addEventListener("change", syncCountryFields);
+  syncCountryFields();
+
   courseSelect?.addEventListener("change", () => {
     const fee = courseFees[courseSelect.value];
     if (fee && courseFee) {
@@ -268,6 +309,10 @@ const courseFees = Object.fromEntries(
     clearFieldErrors();
     const data = new FormData(form);
     data.set("consent", "true");
+    if (!isNigeria(countrySelect?.value)) {
+      data.set("state", "");
+      data.set("city", "");
+    }
     const submitBtn = document.getElementById("register-submit");
     submitBtn.disabled = true;
     try {

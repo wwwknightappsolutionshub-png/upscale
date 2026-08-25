@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { COUNTRIES, isNigeria } from "./countries.ts";
 import { NIGERIA_STATES } from "./nigeria.ts";
 import { isValidNgPhone } from "./phone.ts";
 
@@ -42,25 +43,47 @@ export const registerSchema = z
   .object({
     name: z.string().trim().min(2, "Enter your full name.").max(120),
     email: z.string().trim().email("Enter a valid email address.").max(180),
-    phone: z
-      .string()
-      .trim()
-      .refine(isValidNgPhone, "Enter a valid Nigerian phone number (e.g. 08012345678)."),
-    country: z.string().trim().min(2, "Enter your country.").max(80),
-    state: z.string().trim().min(2, "Select your state."),
-    city: z.string().trim().min(2, "Select your city.").max(80),
+    phone: z.string().trim().min(7, "Enter a valid phone number.").max(20),
+    country: z.string().trim().min(2, "Select your country.").max(80),
+    state: z.string().trim().max(80).optional().default(""),
+    city: z.string().trim().max(80).optional().default(""),
     courseSlug: z.enum(COURSE_SLUGS),
     motivation: z.enum(MOTIVATIONS),
     consent: z.union([z.literal(true), z.literal("true"), z.literal("on"), z.literal("1")]),
   })
   .superRefine((data, ctx) => {
-    const cities = NIGERIA_STATES[data.state];
-    if (!cities) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Select a valid Nigerian state.", path: ["state"] });
+    if (!COUNTRIES.includes(data.country as (typeof COUNTRIES)[number])) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Select a valid country.", path: ["country"] });
+    }
+
+    if (isNigeria(data.country)) {
+      if (!data.state || data.state.length < 2) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Select your state.", path: ["state"] });
+      }
+      if (!data.city || data.city.length < 2) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Select your city.", path: ["city"] });
+      }
+      if (!isValidNgPhone(data.phone)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Enter a valid Nigerian phone number (e.g. 08012345678).",
+          path: ["phone"],
+        });
+      }
+      const cities = data.state ? NIGERIA_STATES[data.state] : undefined;
+      if (data.state && !cities) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Select a valid Nigerian state.", path: ["state"] });
+        return;
+      }
+      if (data.city && cities && !cities.includes(data.city)) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Select a city in your state.", path: ["city"] });
+      }
       return;
     }
-    if (!cities.includes(data.city)) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Select a city in your state.", path: ["city"] });
+
+    const digits = data.phone.replace(/\D/g, "");
+    if (digits.length < 7 || digits.length > 15) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Enter a valid phone number.", path: ["phone"] });
     }
   });
 
@@ -168,5 +191,6 @@ export function seatsLeft(cohort: Cohort) {
   return Math.max(0, cohort.seatCap - cohort.seatsTaken);
 }
 
+export { COUNTRIES, DEFAULT_COUNTRY, isNigeria, type CountryName } from "./countries.ts";
 export { NIGERIA_STATES, NIGERIA_STATE_NAMES } from "./nigeria.ts";
 export { formatNgPhone, isValidNgPhone, normalizeNgPhone } from "./phone.ts";

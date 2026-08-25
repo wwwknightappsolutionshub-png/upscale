@@ -4,6 +4,7 @@ import {
   COURSE_PREFIX,
   formatMoney,
   formatNgPhone,
+  isNigeria,
   normalizeNgPhone,
   registerSchema,
   type CourseSlug,
@@ -19,6 +20,16 @@ import { rateLimit } from "../lib/rate-limit.ts";
 import { saveEvidenceFile } from "../lib/storage.ts";
 
 export const publicRoutes = new Hono();
+
+function normalizePhoneForCompare(country: string, raw: string) {
+  if (isNigeria(country)) return normalizeNgPhone(raw);
+  return raw.replace(/\D/g, "");
+}
+
+function formatPhoneForStorage(country: string, raw: string) {
+  if (isNigeria(country)) return formatNgPhone(raw);
+  return raw.trim();
+}
 
 function clientIp(c: { req: { header: (n: string) => string | undefined } }) {
   return c.req.header("x-forwarded-for")?.split(",")[0]?.trim() || c.req.header("x-real-ip") || "local";
@@ -67,17 +78,25 @@ publicRoutes.post("/register", async (c) => {
   if (!cohort) return c.json({ error: "No open cohort for that course." }, 400);
 
   const email = parsed.data.email.toLowerCase();
-  const phone = formatNgPhone(parsed.data.phone);
-  const phoneNorm = normalizeNgPhone(parsed.data.phone);
+  const phone = formatPhoneForStorage(parsed.data.country, parsed.data.phone);
+  const phoneNorm = normalizePhoneForCompare(parsed.data.country, parsed.data.phone);
   const cohortStudents = await db.select().from(students).where(eq(students.cohortId, cohort.id));
   const dupEmail = cohortStudents.find((s) => s.email === email);
-  const dupPhone = cohortStudents.find((s) => normalizeNgPhone(s.phone) === phoneNorm);
+  const dupPhone = cohortStudents.find(
+    (s) => normalizePhoneForCompare(s.country, s.phone) === phoneNorm,
+  );
 
-  if (dupEmail || dupPhone) {
-    let message = "This email and phone number are already registered for this cohort.";
-    if (dupEmail && !dupPhone) message = "This email is already registered for this cohort.";
-    if (!dupEmail && dupPhone) message = "This phone number is already registered for this cohort.";
-    return c.json({ error: message }, 409);
+  if (dupEmail && dupPhone) {
+    return c.json(
+      { error: "This email and phone number are already registered for this cohort." },
+      409,
+    );
+  }
+  if (dupEmail) {
+    return c.json({ error: "This email is already registered for this cohort." }, 409);
+  }
+  if (dupPhone) {
+    return c.json({ error: "This phone number is already registered for this cohort." }, 409);
   }
 
   const site = process.env.WEB_ORIGIN || "http://localhost:4321";
@@ -103,8 +122,8 @@ publicRoutes.post("/register", async (c) => {
     email,
     phone,
     country: parsed.data.country,
-    state: parsed.data.state,
-    city: parsed.data.city,
+    state: isNigeria(parsed.data.country) ? parsed.data.state || "" : "",
+    city: isNigeria(parsed.data.country) ? parsed.data.city || "" : "",
     courseSlug: parsed.data.courseSlug,
     cohortId: cohort.id,
     motivation: parsed.data.motivation,
