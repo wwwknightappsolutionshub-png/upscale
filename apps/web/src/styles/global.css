@@ -110,11 +110,11 @@ button, input, select, textarea { font: inherit; }
   border-bottom: var(--seam) solid var(--ink);
 }
 .site-bar .brand { min-width: 0; }
-.site-bar .word { min-width: 0; }
-.site-bar .word em { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 14rem; }
-.site-bar .brand__mark { width: 2.35rem; height: 2.35rem; }
-.site-bar .word strong { font-size: 0.92rem; }
-.site-bar .word em { font-size: 0.58rem; }
+.site-bar .brand__logo {
+  width: auto;
+  height: 2.55rem;
+  max-width: min(14.5rem, 62vw);
+}
 .menu-btn {
   display: inline-flex;
   align-items: center;
@@ -213,38 +213,18 @@ body.nav-open .rail {
 .brand {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
   text-decoration: none;
   color: var(--ink);
+  line-height: 0;
 }
-.brand__mark {
+.brand__logo {
   display: block;
-  width: 3.1rem;
-  height: 3.1rem;
+  width: auto;
+  height: 3.35rem;
+  max-width: 100%;
   object-fit: contain;
   background: transparent;
-  flex: 0 0 auto;
 }
-.word {
-  display: flex;
-  flex-direction: column;
-  line-height: 1;
-}
-.word strong {
-  font-weight: 800;
-  letter-spacing: 0.14em;
-  font-size: 1.05rem;
-}
-.word em {
-  font-style: normal;
-  font-weight: 400;
-  font-size: 0.68rem;
-  letter-spacing: 0.04em;
-  color: var(--muted);
-  margin-top: 0.28rem;
-}
-.word em span.today { color: var(--blue-ink); }
-.word em span.tmrw { color: var(--red-ink); }
 
 .rail-courses {
   display: flex;
@@ -1184,6 +1164,10 @@ body.nav-open .rail {
     padding: 1.4rem 1.2rem 5.5rem;
   }
   .rail-brand { display: flex; }
+  .rail-brand .brand__logo {
+    height: 3.6rem;
+    max-width: 100%;
+  }
   .rail-courses {
     flex-direction: column;
     overflow: visible;
