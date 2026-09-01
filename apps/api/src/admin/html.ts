@@ -543,6 +543,32 @@ button.ghost:hover {
 .email-preview-meta { margin-bottom: 1rem; font-size: 0.9rem; color: var(--muted); }
 .email-preview-frame { width: 100%; min-height: 640px; border: 1px solid var(--line); background: #fff; }
 .tox-tinymce { border-radius: var(--radius) !important; border-color: var(--line) !important; }
+.outline-editor { display: grid; gap: 1rem; }
+.outline-editor-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+.outline-editor-head h3 { margin: 0 0 0.25rem; font-size: 1rem; }
+.outline-weeks { display: grid; gap: 0.85rem; }
+.outline-week { padding: 1rem; }
+.outline-week-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+.outline-week-head h4 {
+  margin: 0;
+  font-size: 0.95rem;
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+.outline-week-num { width: 4.5rem; }
 @media (max-width: 960px) {
   .email-editor-split { grid-template-columns: 1fr; }
   .email-side { position: static; }

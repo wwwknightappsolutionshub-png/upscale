@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { desc, eq } from "drizzle-orm";
 import { Hono } from "hono";
-import type { LandingSettings } from "@upscale/shared";
+import type { LandingSettings, WeekBlock } from "@upscale/shared";
 import { db } from "../db/client.ts";
 import {
   adminUsers,
@@ -22,6 +22,7 @@ import { safeJoinUpload } from "../lib/storage.ts";
 import { adminCss } from "../admin/styles.ts";
 import { registrationEmailEditorPage } from "../admin/emails-page.ts";
 import { layout, loginPage, pageHead, roleLabel } from "../admin/html.ts";
+import { outlineEditorBoot, outlineEditorHtml } from "../admin/outline-editor.ts";
 import { richEditorBoot, textareaValue } from "../admin/rich-editor.ts";
 import {
   canEditInstructors,
@@ -463,6 +464,7 @@ adminRoutes.get("/courses/:id", async (c) => {
   if (!canManageSiteContent(roleOf(admin))) return forbid(c, admin, "Only admins can manage courses.");
   const row = (await db.select().from(courses).where(eq(courses.id, c.req.param("id"))).limit(1))[0];
   if (!row) return c.text("Not found", 404);
+  const outline = JSON.parse(row.outlineJson) as WeekBlock[];
   return c.html(
     desk(admin, row.name, `
       ${pageHead(esc(row.name), "Update what appears on the public course page.")}
@@ -482,7 +484,7 @@ adminRoutes.get("/courses/:id", async (c) => {
         <label class="full">Tools (one per line)<textarea name="tools" rows="4">${esc(JSON.parse(row.toolsJson).join("\n"))}</textarea></label>
         <label class="full">Prerequisites<textarea id="course-prerequisites" name="prerequisites" rows="4">${textareaValue(row.prerequisites)}</textarea></label>
         <label class="full">OG description<textarea name="ogDescription" rows="3">${esc(row.ogDescription)}</textarea></label>
-        <label class="full">Outline JSON<textarea name="outlineJson" rows="12" required>${esc(JSON.stringify(JSON.parse(row.outlineJson), null, 2))}</textarea></label>
+        ${outlineEditorHtml(outline)}
         ${formActions("Save course")}
       </form>
       </div>
@@ -493,6 +495,7 @@ adminRoutes.get("/courses/:id", async (c) => {
         ],
         ["course-form"],
       )}
+      ${outlineEditorBoot()}
     `, "/admin/courses"),
   );
 });
