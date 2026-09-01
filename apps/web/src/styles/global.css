@@ -723,10 +723,23 @@ body.nav-open .rail {
 }
 
 @media (min-width: 900px) {
+  .stage:has(.course-hero) {
+    max-width: none;
+    margin-inline: 0;
+    width: 100%;
+    padding: 0 0 5rem;
+  }
+  .stage:has(.course-hero) .course-body {
+    max-width: min(100%, var(--stage-max));
+    margin-inline: auto;
+    padding-inline: var(--stage-pad-x);
+    width: 100%;
+    box-sizing: border-box;
+  }
   .course-hero {
-    margin: 0 calc(-1 * var(--stage-pad-x)) 2.5rem;
-    padding: 2.1rem var(--stage-pad-x) 2rem;
-    border-radius: 0 0 1.65rem 1.65rem;
+    margin: 0 0 2rem;
+    padding: 2.4rem var(--stage-pad-x) 2rem;
+    border-radius: 0;
   }
   .course-body-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
