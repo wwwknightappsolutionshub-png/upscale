@@ -22,6 +22,7 @@ import { safeJoinUpload } from "../lib/storage.ts";
 import { adminCss } from "../admin/styles.ts";
 import { registrationEmailEditorPage } from "../admin/emails-page.ts";
 import { layout, loginPage, pageHead, roleLabel } from "../admin/html.ts";
+import { richEditorBoot, textareaValue } from "../admin/rich-editor.ts";
 import {
   canEditInstructors,
   canManageEmailTemplates,
@@ -467,7 +468,7 @@ adminRoutes.get("/courses/:id", async (c) => {
       ${pageHead(esc(row.name), "Update what appears on the public course page.")}
       ${flashBanner(c)}
       <div class="panel">
-      <form method="post" class="stack">
+      <form id="course-form" method="post" class="stack">
         <div class="form-grid">
           <label>Price<input name="price" type="number" min="0" value="${row.price}" required /></label>
           <label>Currency<input name="currency" value="${esc(row.currency)}" required /></label>
@@ -476,15 +477,22 @@ adminRoutes.get("/courses/:id", async (c) => {
           <label>Weekly hours<input name="weeklyHours" type="number" min="1" value="${row.weeklyHours}" required /></label>
           <label class="check"><input type="checkbox" name="registrationOpen" ${row.registrationOpen ? "checked" : ""} /> Registration open</label>
         </div>
-        <label class="full">Short pitch<textarea name="shortPitch" rows="4" required>${esc(row.shortPitch)}</textarea></label>
+        <label class="full">Short pitch<textarea id="course-short-pitch" name="shortPitch" rows="4" required>${textareaValue(row.shortPitch)}</textarea></label>
         <label class="full">Outcomes (one per line)<textarea name="outcomes" rows="6">${esc(JSON.parse(row.outcomesJson).join("\n"))}</textarea></label>
         <label class="full">Tools (one per line)<textarea name="tools" rows="4">${esc(JSON.parse(row.toolsJson).join("\n"))}</textarea></label>
-        <label class="full">Prerequisites<textarea name="prerequisites" rows="4">${esc(row.prerequisites)}</textarea></label>
+        <label class="full">Prerequisites<textarea id="course-prerequisites" name="prerequisites" rows="4">${textareaValue(row.prerequisites)}</textarea></label>
         <label class="full">OG description<textarea name="ogDescription" rows="3">${esc(row.ogDescription)}</textarea></label>
         <label class="full">Outline JSON<textarea name="outlineJson" rows="12" required>${esc(JSON.stringify(JSON.parse(row.outlineJson), null, 2))}</textarea></label>
         ${formActions("Save course")}
       </form>
       </div>
+      ${richEditorBoot(
+        [
+          { id: "course-short-pitch", height: 220 },
+          { id: "course-prerequisites", height: 260 },
+        ],
+        ["course-form"],
+      )}
     `, "/admin/courses"),
   );
 });
@@ -526,19 +534,14 @@ adminRoutes.post("/courses/:id", async (c) => {
 adminRoutes.get("/instructors", async (c) => {
   const admin = c.get("admin");
   const catalog = await loadCatalog();
-  return c.html(
-    desk(admin, "Instructors", `
-      ${pageHead("Instructors", "Update instructor names, roles, and bios shown on the public site.")}
-      ${flashBanner(c)}
-      <div class="instructor-grid">
-      ${catalog.instructors
-        .map(
-          (i) => `<form method="post" action="/admin/instructors/${i.id}" class="stack cardish instructor-card">
+  const instructorForms = catalog.instructors
+    .map(
+      (i) => `<form id="instructor-form-${i.id}" method="post" action="/admin/instructors/${i.id}" class="stack cardish instructor-card">
             <div class="avatar ${esc(i.accent)}">${esc(i.initials)}</div>
             <p class="slug">${esc(i.slug)}</p>
             <label>Name<input name="name" value="${esc(i.name)}" required minlength="2" maxlength="120" /></label>
             <label>Role<input name="role" value="${esc(i.role)}" required /></label>
-            <label>Bio<textarea name="bio" rows="5" required>${esc(i.bio)}</textarea></label>
+            <label>Bio<textarea id="instructor-bio-${i.id}" name="bio" rows="5" required>${textareaValue(i.bio)}</textarea></label>
             <label>Accent
               <select name="accent">
                 <option value="blue" ${i.accent === "blue" ? "selected" : ""}>Blue</option>
@@ -547,9 +550,19 @@ adminRoutes.get("/instructors", async (c) => {
             </label>
             ${formActions("Save instructor")}
           </form>`,
-        )
-        .join("")}
+    )
+    .join("");
+  return c.html(
+    desk(admin, "Instructors", `
+      ${pageHead("Instructors", "Update instructor names, roles, and bios shown on the public site.")}
+      ${flashBanner(c)}
+      <div class="instructor-grid">
+      ${instructorForms}
       </div>
+      ${richEditorBoot(
+        catalog.instructors.map((i) => ({ id: `instructor-bio-${i.id}`, height: 240 })),
+        catalog.instructors.map((i) => `instructor-form-${i.id}`),
+      )}
     `, "/admin/instructors"),
   );
 });

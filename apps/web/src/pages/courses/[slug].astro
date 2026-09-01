@@ -52,7 +52,7 @@ const jsonLd = {
     <div class="course-hero-inner">
       <p class="kicker">Virtual · {course.durationWeeks} weeks · {course.weeklyHours}h / week</p>
       <h1 class="display">{course.name}</h1>
-      <p class="lede">{course.shortPitch}</p>
+      <div class="richtext lede" set:html={course.shortPitch} />
       {
         cohort && (
           <ul class="course-hero-facts">
@@ -82,58 +82,68 @@ const jsonLd = {
   </header>
 
   <div class="course-body">
-  <h2>You will leave able to</h2>
-  <ul>
-    {course.outcomes.map((o) => <li>{o}</li>)}
-  </ul>
+    <div class="course-body-grid">
+      <section class="course-block">
+        <h2>You will leave able to</h2>
+        <ul class="course-list">
+          {course.outcomes.map((o) => <li>{o}</li>)}
+        </ul>
+      </section>
 
-  <h2 class="heading-rule">Outline</h2>
-  <ol class="syllabus">
-    {
-      course.outline.map((w, i) => (
-        <li class={`week-card tone-${i % 4}`} style={`--i: ${i}`} tabindex="0">
-          <div class="num">{String(w.week).padStart(2, "0")}</div>
-          <h3>{w.title}</h3>
-          <p>{w.topics.join(" · ")} · {w.hours}h</p>
-          {w.project && <span class="proj">Learner's Assessment: {w.project}</span>}
-        </li>
-      ))
-    }
-  </ol>
+      <section class="course-block">
+        <h2>Tools</h2>
+        <p class="course-tools">{course.tools.join(" · ")}</p>
+        <h2>Prerequisites</h2>
+        <div class="richtext" set:html={course.prerequisites} />
+      </section>
 
-  <h2>Tools</h2>
-  <p class="lede">{course.tools.join(" · ")}</p>
-  <h2>Prerequisites</h2>
-  <p class="lede">{course.prerequisites}</p>
+      <section class="course-block course-block-wide">
+        <h2 class="heading-rule">Outline</h2>
+        <ol class="syllabus">
+          {
+            course.outline.map((w, i) => (
+              <li class={`week-card tone-${i % 4}`} style={`--i: ${i}`} tabindex="0">
+                <div class="num">{String(w.week).padStart(2, "0")}</div>
+                <h3>{w.title}</h3>
+                <p>{w.topics.join(" · ")} · {w.hours}h</p>
+                {w.project && <span class="proj">Learner's Assessment: {w.project}</span>}
+              </li>
+            ))
+          }
+        </ol>
+      </section>
 
-  <h2>Instructors</h2>
-  <ul class="cast">
-    {
-      teachers.map((i) => (
-        <li>
-          <a href={`/instructors/${i.slug}`}>
-            <div class:list={["avatar", i.accent]}>{i.initials}</div>
-            <div>
-              <h2>{i.name}</h2>
-              <p>{i.role}</p>
-            </div>
-          </a>
-        </li>
-      ))
-    }
-  </ul>
+      <section class="course-block course-block-wide">
+        <h2>Instructors</h2>
+        <ul class="cast">
+          {
+            teachers.map((i) => (
+              <li>
+                <a href={`/instructors/${i.slug}`}>
+                  <div class:list={["avatar", i.accent]}>{i.initials}</div>
+                  <div>
+                    <h2>{i.name}</h2>
+                    <p>{i.role}</p>
+                  </div>
+                </a>
+              </li>
+            ))
+          }
+        </ul>
+      </section>
 
-  <section class="faq">
-    <h2>Course questions</h2>
-    {
-      course.faq.map((f) => (
-        <details>
-          <summary>{f.q}</summary>
-          <p>{f.a}</p>
-        </details>
-      ))
-    }
-  </section>
+      <section class="course-block course-block-wide faq">
+        <h2>Course questions</h2>
+        {
+          course.faq.map((f) => (
+            <details>
+              <summary>{f.q}</summary>
+              <p>{f.a}</p>
+            </details>
+          ))
+        }
+      </section>
+    </div>
   </div>
 </Horizon>
 

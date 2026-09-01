@@ -31,7 +31,7 @@ const jsonLd = {
       <p class="kicker">{person.role}</p>
       <div class:list={["avatar", person.accent]} style="margin-bottom:1rem">{person.initials}</div>
       <h1 class="display">{person.name}</h1>
-      <p class="lede">{person.bio}</p>
+      <div class="richtext lede" set:html={person.bio} />
       <h2>Teaches</h2>
       <ul>
         {

@@ -2,6 +2,7 @@
 import Horizon from "../../layouts/Horizon.astro";
 import { formatMoney } from "@upscale/shared";
 import { formatDay, getCatalog, nextCohort } from "../../lib/catalog";
+import { stripHtml } from "../../lib/rich";
 
 const catalog = await getCatalog();
 ---
@@ -20,7 +21,7 @@ const catalog = await getCatalog();
       return (
         <section class="course-block">
           <h2>{course.name}</h2>
-          <p class="lede">{course.shortPitch}</p>
+          <p class="lede">{stripHtml(course.shortPitch)}</p>
           <p class="meta-line">
             {course.durationWeeks} weeks · {cohort ? `${formatDay(cohort.startDate)} · ${formatMoney(cohort.price, cohort.currency)}` : ""}
           </p>
