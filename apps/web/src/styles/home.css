@@ -42,39 +42,54 @@
   overflow: visible;
 }
 .hero-mark {
+  position: relative;
   width: 100%;
   aspect-ratio: 1;
   overflow: visible;
   background: transparent;
 }
-.hero-mark__img {
+.hero-mark__blue,
+.hero-mark__red {
   display: block;
   width: 100%;
   height: 100%;
   object-fit: contain;
+}
+.hero-mark__blue {
+  position: relative;
+  z-index: 1;
+}
+.hero-mark__red {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
   transform-origin: center bottom;
-  will-change: transform, opacity;
-  animation: hero-mark-grow 2.6s cubic-bezier(0.45, 0.05, 0.25, 1) infinite;
+  will-change: transform, opacity, filter;
+  animation: hero-mark-red-rise 3.2s cubic-bezier(0.22, 1, 0.36, 1) infinite;
 }
-.hero-split.in .hero-mark__img {
-  animation: hero-mark-grow 2.6s cubic-bezier(0.45, 0.05, 0.25, 1) infinite;
+.hero-split.in .hero-mark__red {
+  animation: hero-mark-red-rise 3.2s cubic-bezier(0.22, 1, 0.36, 1) infinite;
 }
-@keyframes hero-mark-grow {
+@keyframes hero-mark-red-rise {
   0% {
-    transform: scaleY(0.28) scaleX(0.92);
-    opacity: 0.45;
+    transform: scaleY(0);
+    opacity: 0;
+    filter: brightness(0);
   }
   42% {
-    transform: scaleY(1) scaleX(1);
+    transform: scaleY(1);
     opacity: 1;
+    filter: brightness(1);
   }
-  58% {
-    transform: scaleY(1) scaleX(1);
+  62% {
+    transform: scaleY(1);
     opacity: 1;
+    filter: brightness(1);
   }
   100% {
-    transform: scaleY(0.28) scaleX(0.92);
-    opacity: 0.45;
+    transform: scaleY(0);
+    opacity: 0;
+    filter: brightness(0);
   }
 }
 .hero-art .mark,
@@ -454,11 +469,12 @@
   .live-dot {
     animation: none;
   }
-  .hero-mark__img,
-  .hero-split.in .hero-mark__img {
+  .hero-mark__red,
+  .hero-split.in .hero-mark__red {
     animation: none;
     transform: none;
     opacity: 1;
+    filter: none;
   }
   .swoop,
   .draw { stroke-dashoffset: 0; }
