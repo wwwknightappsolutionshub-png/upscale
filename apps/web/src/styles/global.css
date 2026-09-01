@@ -302,6 +302,7 @@ body.nav-open .rail {
   max-width: min(100%, var(--stage-max));
   width: 100%;
   min-width: 0;
+  margin-inline: auto;
   overflow-x: clip;
 }
 
@@ -511,10 +512,8 @@ body.nav-open .rail {
 .course-hero-inner {
   position: relative;
   z-index: 1;
-  max-width: min(100%, 70rem);
   width: 100%;
-  margin-inline: auto;
-  padding-inline: clamp(0.5rem, 3vw, 2rem);
+  max-width: 100%;
 }
 .course-hero .kicker {
   color: inherit;
@@ -646,16 +645,12 @@ body.nav-open .rail {
 .course-body {
   padding-top: 0.2rem;
   width: 100%;
-  display: flex;
-  justify-content: center;
 }
 .course-body-grid {
   display: grid;
   gap: 1.35rem 2rem;
   width: 100%;
-  max-width: min(100%, 70rem);
-  margin-inline: auto;
-  padding-inline: clamp(0.75rem, 3.5vw, 2.5rem);
+  max-width: 100%;
 }
 .course-block {
   min-width: 0;
@@ -736,7 +731,6 @@ body.nav-open .rail {
   .course-body-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 1.5rem 2.5rem;
-    padding-inline: clamp(1rem, 4vw, 3rem);
   }
 }
 
@@ -1290,7 +1284,9 @@ body.nav-open .rail {
   }
   .stage {
     padding: 2.4rem var(--stage-pad-x) 5rem;
-    max-width: var(--stage-max);
+    max-width: min(100%, var(--stage-max));
+    margin-inline: auto;
+    width: 100%;
   }
   .proof { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   .pay-grid { grid-template-columns: 1fr 1fr; align-items: start; }
