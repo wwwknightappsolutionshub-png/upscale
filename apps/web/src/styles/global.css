@@ -511,8 +511,10 @@ body.nav-open .rail {
 .course-hero-inner {
   position: relative;
   z-index: 1;
-  max-width: 100%;
+  max-width: min(100%, 70rem);
   width: 100%;
+  margin-inline: auto;
+  padding-inline: clamp(0.5rem, 3vw, 2rem);
 }
 .course-hero .kicker {
   color: inherit;
@@ -644,23 +646,30 @@ body.nav-open .rail {
 .course-body {
   padding-top: 0.2rem;
   width: 100%;
+  display: flex;
+  justify-content: center;
 }
 .course-body-grid {
   display: grid;
-  gap: 2rem 2.5rem;
+  gap: 1.35rem 2rem;
   width: 100%;
+  max-width: min(100%, 70rem);
+  margin-inline: auto;
+  padding-inline: clamp(0.75rem, 3.5vw, 2.5rem);
 }
 .course-block {
   min-width: 0;
 }
 .course-block h2 {
   margin-top: 0;
+  margin-bottom: 0.65rem;
 }
 .course-block h2 + h2 {
-  margin-top: 1.75rem;
+  margin-top: 1.25rem;
 }
 .course-block-wide {
   grid-column: 1 / -1;
+  padding-top: 0.35rem;
 }
 .course-body .lede,
 .course-body .richtext,
@@ -671,7 +680,7 @@ body.nav-open .rail {
 .course-tools {
   font-size: clamp(0.95rem, 3.4vw, 1.08rem);
   color: var(--muted);
-  margin: 0 0 1.4rem;
+  margin: 0 0 0.85rem;
   line-height: 1.55;
 }
 .course-list {
@@ -708,8 +717,8 @@ body.nav-open .rail {
   border-bottom: var(--seam) solid var(--ink);
   padding-top: 0.85rem;
   padding-bottom: 0.65rem;
-  margin-top: 1.5rem;
-  margin-bottom: 0.85rem;
+  margin-top: 0.25rem;
+  margin-bottom: 0.65rem;
 }
 
 @media (min-width: 640px) {
@@ -726,7 +735,8 @@ body.nav-open .rail {
   }
   .course-body-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 2.5rem 3rem;
+    gap: 1.5rem 2.5rem;
+    padding-inline: clamp(1rem, 4vw, 3rem);
   }
 }
 
@@ -883,7 +893,7 @@ body.nav-open .rail {
   display: grid;
   grid-template-columns: 4.4rem 1fr;
   gap: 1rem;
-  padding: 1.1rem 0;
+  padding: 0.85rem 0;
   border-top: var(--seam) solid var(--ink);
   text-decoration: none;
   color: inherit;
@@ -941,13 +951,16 @@ body.nav-open .rail {
 
 .faq details {
   border-top: var(--seam) solid var(--ink);
-  padding: 0.85rem 0;
+  padding: 0.7rem 0;
 }
 .faq summary {
   font-weight: 800;
   cursor: pointer;
 }
-.faq p { margin: 0.4rem 0 0; color: var(--muted); }
+.faq p { margin: 0.35rem 0 0; color: var(--muted); }
+.course-body .faq h2 {
+  margin-bottom: 0.35rem;
+}
 
 .faq-page {
   display: grid;
@@ -1282,7 +1295,6 @@ body.nav-open .rail {
   .proof { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   .pay-grid { grid-template-columns: 1fr 1fr; align-items: start; }
   .dock { padding: 0.7rem 2rem calc(0.7rem + env(safe-area-inset-bottom, 0px)) calc(var(--rail) + 2rem); }
-  .course-block { min-height: 72vh; }
 }
 
 @media (prefers-reduced-motion: reduce) {
