@@ -52,22 +52,32 @@
   position: relative;
   width: 100%;
   height: 100%;
-  transform-origin: center center;
+  transform-origin: center bottom;
   will-change: transform, opacity;
-  animation: hero-mark-cycle 5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  animation: hero-mark-launch 5.5s cubic-bezier(0.45, 0, 0.2, 1) infinite;
 }
 .hero-split.in .hero-mark__stack {
-  animation: hero-mark-cycle 5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  animation: hero-mark-launch 5.5s cubic-bezier(0.45, 0, 0.2, 1) infinite;
 }
-.hero-mark__flash {
+.hero-mark__exhaust {
   position: absolute;
-  inset: -20%;
-  z-index: 3;
+  bottom: 2%;
+  left: 50%;
+  z-index: 0;
+  width: 42%;
+  height: 28%;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(255, 255, 255, 0.98) 0%, rgba(255, 255, 255, 0) 72%);
+  transform: translateX(-50%);
+  background: radial-gradient(
+    ellipse at center,
+    rgba(255, 120, 60, 0.95) 0%,
+    rgba(227, 28, 36, 0.55) 42%,
+    rgba(227, 28, 36, 0) 72%
+  );
   opacity: 0;
   pointer-events: none;
-  animation: hero-mark-flash 5s ease-out infinite;
+  filter: blur(2px);
+  animation: hero-mark-exhaust 5.5s ease-out infinite;
 }
 .hero-mark__blue,
 .hero-mark__red {
@@ -86,66 +96,71 @@
   z-index: 2;
   transform-origin: center bottom;
   will-change: transform, opacity, filter;
-  animation: hero-mark-red-rise 5s cubic-bezier(0.22, 1, 0.36, 1) infinite;
+  animation: hero-mark-ignite 5.5s cubic-bezier(0.22, 1, 0.36, 1) infinite;
 }
 .hero-split.in .hero-mark__red {
-  animation: hero-mark-red-rise 5s cubic-bezier(0.22, 1, 0.36, 1) infinite;
+  animation: hero-mark-ignite 5.5s cubic-bezier(0.22, 1, 0.36, 1) infinite;
 }
-@keyframes hero-mark-red-rise {
-  0%, 10% {
-    transform: scaleY(0);
+@keyframes hero-mark-ignite {
+  0%, 12% {
+    transform: scaleY(0.12) scaleX(0.88);
     opacity: 0;
     filter: brightness(0);
   }
-  40% {
+  30% {
+    transform: scaleY(1) scaleX(1);
+    opacity: 1;
+    filter: brightness(2.2) drop-shadow(0 0 14px rgba(227, 28, 36, 0.85));
+  }
+  36%, 40% {
     transform: scaleY(1);
     opacity: 1;
-    filter: brightness(1);
+    filter: brightness(1.35) drop-shadow(0 0 10px rgba(227, 28, 36, 0.55));
   }
-  48%, 100% {
+  44%, 100% {
     transform: scaleY(1);
     opacity: 1;
     filter: brightness(1);
   }
 }
-@keyframes hero-mark-cycle {
-  0%, 6% {
-    transform: scale(0.88) translateY(10%);
-    opacity: 0;
-  }
-  12%, 46% {
-    transform: scale(1) translateY(0);
+@keyframes hero-mark-launch {
+  0%, 40% {
+    transform: translateY(0) scale(1);
     opacity: 1;
   }
-  50% {
-    transform: scale(1.08) translateY(-2%);
+  44% {
+    transform: translateY(-1%) scale(1.03);
     opacity: 1;
   }
-  58% {
-    transform: scale(2.8) translateY(-42%);
+  60% {
+    transform: translateY(-120%) scale(0.9);
     opacity: 0;
   }
-  59%, 96% {
-    transform: scale(0.75) translateY(18%);
+  61%, 74% {
+    transform: translateY(100%) scale(0.86);
     opacity: 0;
   }
-  100% {
-    transform: scale(0.88) translateY(10%);
-    opacity: 0;
+  84% {
+    transform: translateY(12%) scale(0.95);
+    opacity: 0.35;
+  }
+  94%, 100% {
+    transform: translateY(0) scale(1);
+    opacity: 1;
   }
 }
-@keyframes hero-mark-flash {
-  0%, 48% {
+@keyframes hero-mark-exhaust {
+  0%, 26% {
     opacity: 0;
-    transform: scale(0.6);
+    transform: translateX(-50%) scale(0.4, 0.25);
   }
-  50% {
-    opacity: 1;
-    transform: scale(1.15);
+  34%, 52% {
+    opacity: 0.95;
+    transform: translateX(-50%) scale(1.15, 1.35);
   }
-  56%, 100% {
+  62%, 100% {
     opacity: 0;
-    transform: scale(1.4);
+    transform: translateX(-50%) scale(0.5, 0.3);
   }
 }
 .hero-art .mark,
@@ -529,7 +544,7 @@
   .hero-split.in .hero-mark__stack,
   .hero-mark__red,
   .hero-split.in .hero-mark__red,
-  .hero-mark__flash {
+  .hero-mark__exhaust {
     animation: none;
     transform: none;
     opacity: 1;
