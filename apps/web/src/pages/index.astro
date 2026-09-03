@@ -30,23 +30,18 @@ const jsonLd = {
   ],
 };
 
-const audiences = [
-  {
-    mark: "switch" as const,
-    title: "Switching path",
-    copy: "Leave the job that no longer fits. The tracks assume you can show up twice a week and do the studio hours — not that you already have a title in design or engineering.",
-  },
-  {
-    mark: "newbie" as const,
-    title: "New to IT",
-    copy: "If the vocabulary is new, start on Graphic Design or Front-End. We teach the craft in public: live sessions, recorded catch-up, critique on your actual work.",
-  },
-  {
-    mark: "upskill" as const,
-    title: "Upscaling",
-    copy: "You already ship bits of this at work and want a cohort, a syllabus, and a capstone with standards. Backend and Full Stack are built for that stretch.",
-  },
-];
+const audiences = catalog.settings.waysIn;
+const waysInTitle = catalog.settings.waysInTitle || "Ways in";
+const tracksTitle = catalog.settings.tracksTitle || "The tracks";
+
+function slabParts(title: string) {
+  const parts = title.trim().split(/\s+/).filter(Boolean);
+  if (parts.length < 2) return { lead: title, em: "" };
+  const em = parts.pop()!;
+  return { lead: parts.join(" "), em };
+}
+const waysSlab = slabParts(waysInTitle);
+const tracksSlab = slabParts(tracksTitle);
 ---
 <Horizon
   title="UPSCALE — learn today, build tomorrow"
@@ -116,7 +111,15 @@ const audiences = [
 
     <section class="ways-band reveal" aria-label="Who it is for">
       <header class="ways-head">
-        <p class="slab">Ways <em>in</em></p>
+        <p class="slab">
+          {waysSlab.em ? (
+            <>
+              {waysSlab.lead} <em>{waysSlab.em}</em>
+            </>
+          ) : (
+            waysSlab.lead
+          )}
+        </p>
       </header>
       <div class="ways">
         {audiences.map((a, i) => (
@@ -129,39 +132,65 @@ const audiences = [
       </div>
     </section>
 
-    <p class="slab slab-rule reveal">
-      The <em>tracks</em>
-    </p>
-    <section class="tracks" aria-label="Courses">
-      {
-        catalog.courses.map((course) => {
-          const cohort = nextCohort(catalog, course.slug);
-          const lead = instructorsOf(catalog, course)[0];
-          const mid = course.outline[Math.floor(course.outline.length / 2)];
-          const last = course.outline[course.outline.length - 1];
-          const firstTitle = course.outline[0]?.title;
-          return (
-            <article class={`track track-${course.slug} reveal`} id={course.slug}>
-              <div class="track-visual">
-                <Mark name={course.slug} />
-              </div>
-              <div class="track-copy">
-                <p class="kicker">
-                  {course.durationWeeks} weeks · {course.weeklyHours}h / week
-                </p>
-                <h2>{course.name}</h2>
-                <p class="lede">{stripHtml(course.shortPitch)}</p>
-                <p class="meta-line">
-                  {cohort ? (
-                    <>
-                      {formatDay(cohort.startDate)} · {cohort.daysLabel} {cohort.timeLabel} ·{" "}
-                      {formatMoney(cohort.price, cohort.currency)}
-                    </>
-                  ) : null}
-                  {lead ? ` · ${lead.name}` : null}
-                </p>
-                {
-                  firstTitle && mid && last ? (
+    <section class="tracks-band reveal" aria-label="Courses">
+      <header class="tracks-head">
+        <p class="slab">
+          {tracksSlab.em ? (
+            <>
+              {tracksSlab.lead} <em>{tracksSlab.em}</em>
+            </>
+          ) : (
+            tracksSlab.lead
+          )}
+        </p>
+      </header>
+      <div class="tracks">
+        {
+          catalog.courses.map((course) => {
+            const cohort = nextCohort(catalog, course.slug);
+            const lead = instructorsOf(catalog, course)[0];
+            const mid = course.outline[Math.floor(course.outline.length / 2)];
+            const last = course.outline[course.outline.length - 1];
+            const firstTitle = course.outline[0]?.title;
+            return (
+              <article class={`track track-${course.slug}`} id={course.slug}>
+                <div class="track-visual" aria-hidden="true">
+                  <span class="track-visual__glow"></span>
+                  <Mark name={course.slug} />
+                </div>
+                <div class="track-copy">
+                  <p class="kicker">
+                    {course.durationWeeks} weeks · {course.weeklyHours}h / week
+                  </p>
+                  <h2>{course.name}</h2>
+                  <p class="lede">{stripHtml(course.shortPitch)}</p>
+                  {(cohort || lead) && (
+                    <ul class="track-facts">
+                      {cohort ? (
+                        <>
+                          <li>
+                            <span>Starts</span>
+                            {formatDay(cohort.startDate)}
+                          </li>
+                          <li>
+                            <span>Meets</span>
+                            {cohort.daysLabel} {cohort.timeLabel}
+                          </li>
+                          <li>
+                            <span>Fee</span>
+                            {formatMoney(cohort.price, cohort.currency)}
+                          </li>
+                        </>
+                      ) : null}
+                      {lead ? (
+                        <li>
+                          <span>Lead</span>
+                          {lead.name}
+                        </li>
+                      ) : null}
+                    </ul>
+                  )}
+                  {firstTitle && mid && last ? (
                     <ol class="ticks" aria-label={`${course.name} arc`}>
                       <li>
                         <span>01</span>
@@ -176,16 +205,17 @@ const audiences = [
                         {last.title}
                       </li>
                     </ol>
-                  ) : null
-                }
-                <a class="text-btn" href={`/courses/${course.slug}`}>
-                  Full outline
-                </a>
-              </div>
-            </article>
-          );
-        })
-      }
+                  ) : null}
+                  <a class="track-cta" href={`/courses/${course.slug}`}>
+                    Full outline
+                    <span aria-hidden="true">→</span>
+                  </a>
+                </div>
+              </article>
+            );
+          })
+        }
+      </div>
     </section>
   </section>
 </Horizon>

@@ -1,7 +1,9 @@
 import { readFile } from "node:fs/promises";
 import { desc, eq } from "drizzle-orm";
 import { Hono } from "hono";
-import type { CourseSlug, LandingSettings, WeekBlock } from "@upscale/shared";
+import type { CourseSlug, LandingSettings, WaysInItem, WeekBlock } from "@upscale/shared";
+import { WAYS_IN_MARKS } from "@upscale/shared";
+import { seedCatalog } from "@upscale/shared/seed";
 import { db } from "../db/client.ts";
 import {
   adminUsers,
@@ -472,6 +474,7 @@ adminRoutes.get("/courses/:id", async (c) => {
       <div class="panel">
       <form id="course-form" method="post" class="stack">
         <div class="form-grid">
+          <label class="full">Name<input name="name" value="${esc(row.name)}" required maxlength="120" /></label>
           <label>Price<input name="price" type="number" min="0" value="${row.price}" required /></label>
           <label>Currency<input name="currency" value="${esc(row.currency)}" required /></label>
           <label>Seat cap<input name="seatCap" type="number" min="1" value="${row.seatCap}" required /></label>
@@ -479,6 +482,7 @@ adminRoutes.get("/courses/:id", async (c) => {
           <label>Weekly hours<input name="weeklyHours" type="number" min="1" value="${row.weeklyHours}" required /></label>
           <label class="check"><input type="checkbox" name="registrationOpen" ${row.registrationOpen ? "checked" : ""} /> Registration open</label>
         </div>
+        <p class="note">Name, short pitch, duration, and outline also drive the homepage “The tracks” cards.</p>
         <label class="full">Short pitch<textarea id="course-short-pitch" name="shortPitch" rows="4" required>${textareaValue(row.shortPitch)}</textarea></label>
         <label class="full">Outcomes (one per line)<textarea name="outcomes" rows="6">${esc(JSON.parse(row.outcomesJson).join("\n"))}</textarea></label>
         <label class="full">Tools (one per line)<textarea name="tools" rows="4">${esc(JSON.parse(row.toolsJson).join("\n"))}</textarea></label>
@@ -516,6 +520,7 @@ adminRoutes.post("/courses/:id", async (c) => {
   await db
     .update(courses)
     .set({
+      name: String(body.name || row.name).trim() || row.name,
       shortPitch: String(body.shortPitch || ""),
       price: Number(body.price),
       currency: String(body.currency || "USD"),
@@ -700,9 +705,26 @@ adminRoutes.get("/landing", async (c) => {
   if (!canManageSiteContent(roleOf(admin))) return forbid(c, admin, "Only admins can edit landing copy.");
   const catalog = await loadCatalog();
   const s = catalog.settings;
+  const waysCards = [0, 1, 2].map((i) => {
+    const card = s.waysIn[i] || seedCatalog.settings.waysIn[i];
+    const markOptions = WAYS_IN_MARKS.map(
+      (m) => `<option value="${m}" ${card.mark === m ? "selected" : ""}>${m === "switch" ? "Switching path" : m === "newbie" ? "New to IT" : "Upscaling"}</option>`,
+    ).join("");
+    return `
+      <fieldset class="ways-card">
+        <legend>Card ${i + 1}</legend>
+        <div class="form-grid">
+          <label>Icon
+            <select name="waysMark${i}" required>${markOptions}</select>
+          </label>
+          <label>Title<input name="waysTitle${i}" value="${esc(card.title)}" required maxlength="80" /></label>
+        </div>
+        <label class="full">Copy<textarea name="waysCopy${i}" rows="4" required maxlength="600">${esc(card.copy)}</textarea></label>
+      </fieldset>`;
+  }).join("");
   return c.html(
     desk(admin, "Landing", `
-      ${pageHead("Landing copy", "Site-wide messaging, bank details, FAQs, and proof stats.")}
+      ${pageHead("Landing copy", "Site-wide messaging, Ways in, bank details, FAQs, and proof stats.")}
       ${flashBanner(c)}
       <div class="panel">
       <form method="post" class="stack">
@@ -715,6 +737,17 @@ adminRoutes.get("/landing", async (c) => {
         </div>
         <label class="full">Hero line<textarea name="heroLine" rows="4" required>${esc(s.heroLine)}</textarea></label>
         <label class="full">Closed message<textarea name="closedMessage" rows="3">${esc(s.closedMessage)}</textarea></label>
+
+        <h2>Ways in</h2>
+        <p class="note">Homepage audience band — three cards under the black header.</p>
+        <label>Section title<input name="waysInTitle" value="${esc(s.waysInTitle)}" required maxlength="60" /></label>
+        ${waysCards}
+
+        <h2>The tracks</h2>
+        <p class="note">Section heading only. Track cards (pitch, duration, schedule, price, outline) come from
+          <a href="/admin/courses">Courses</a> and <a href="/admin/cohorts">Cohorts</a>.</p>
+        <label>Section title<input name="tracksTitle" value="${esc(s.tracksTitle)}" required maxlength="60" /></label>
+
         <h2>Bank</h2>
         <div class="form-grid">
           <label>Bank name<input name="bankName" value="${esc(s.bank.bankName)}" required /></label>
@@ -745,6 +778,20 @@ adminRoutes.post("/landing", async (c) => {
   } catch {
     return c.text("FAQ or proof JSON is invalid", 400);
   }
+  const waysIn = [0, 1, 2].map((i) => {
+    const markRaw = String(body[`waysMark${i}`] || "switch");
+    const mark = (WAYS_IN_MARKS as readonly string[]).includes(markRaw)
+      ? (markRaw as WaysInItem["mark"])
+      : ("switch" as WaysInItem["mark"]);
+    return {
+      mark,
+      title: String(body[`waysTitle${i}`] || "").trim(),
+      copy: String(body[`waysCopy${i}`] || "").trim(),
+    };
+  });
+  if (waysIn.some((w) => !w.title || !w.copy)) {
+    return c.text("Each Ways in card needs a title and copy.", 400);
+  }
   const current = await loadCatalog();
   const next: LandingSettings = {
     ...current.settings,
@@ -755,6 +802,9 @@ adminRoutes.post("/landing", async (c) => {
     timezone: String(body.timezone),
     registrationOpen: Boolean(body.registrationOpen),
     closedMessage: String(body.closedMessage || ""),
+    waysInTitle: String(body.waysInTitle || "Ways in").trim() || "Ways in",
+    tracksTitle: String(body.tracksTitle || "The tracks").trim() || "The tracks",
+    waysIn,
     bank: {
       bankName: String(body.bankName),
       accountName: String(body.accountName),

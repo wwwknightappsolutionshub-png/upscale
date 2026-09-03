@@ -266,6 +266,25 @@ export const seedCatalog: Catalog = {
       { q: "What if I miss a class?", a: "Recordings go out the same day. You are still expected to submit studio work; this is not a YouTube playlist with a price tag." },
       { q: "Refunds?", a: "If we decline your evidence because of a genuine error, you may re-upload. Fee refunds after enrolment are handled in writing against the cohort policy in your confirmation email." },
     ],
+    waysInTitle: "Ways in",
+    tracksTitle: "The tracks",
+    waysIn: [
+      {
+        mark: "switch",
+        title: "Switching path",
+        copy: "Leave the job that no longer fits. The tracks assume you can show up twice a week and do the studio hours — not that you already have a title in design or engineering.",
+      },
+      {
+        mark: "newbie",
+        title: "New to IT",
+        copy: "If the vocabulary is new, start on Graphic Design or Front-End. We teach the craft in public: live sessions, recorded catch-up, critique on your actual work.",
+      },
+      {
+        mark: "upskill",
+        title: "Upscaling",
+        copy: "You already ship bits of this at work and want a cohort, a syllabus, and a capstone with standards. Backend and Full Stack are built for that stretch.",
+      },
+    ],
   },
   courses: seedCourses,
   instructors: seedInstructors,

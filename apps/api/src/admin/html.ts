@@ -350,6 +350,17 @@ button.ghost:hover {
   gap: 0.75rem;
 }
 .form-grid .full { grid-column: 1 / -1; }
+fieldset.ways-card {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0.85rem 1rem 1rem;
+  margin: 0;
+}
+fieldset.ways-card legend {
+  padding: 0 0.35rem;
+  font-weight: 650;
+  font-size: 0.92rem;
+}
 .evidence-card {
   background: var(--white);
   border: 1px solid var(--line);

@@ -1,9 +1,30 @@
 import { asc, eq } from "drizzle-orm";
-import type { Catalog, Course, CourseSlug, Instructor, LandingSettings } from "@upscale/shared";
+import type { Catalog, Course, CourseSlug, Instructor, LandingSettings, WaysInItem } from "@upscale/shared";
+import { WAYS_IN_MARKS } from "@upscale/shared";
+import { seedCatalog } from "@upscale/shared/seed";
 import { db } from "../db/client.ts";
 import { auditLogs, cohorts, courses, instructors, settings } from "../db/schema.ts";
 import { instructorPhotoPublicUrl } from "./storage.ts";
 import { nid, nowIso } from "./ids.ts";
+
+function normalizeWaysIn(raw: unknown): WaysInItem[] {
+  const fallback = seedCatalog.settings.waysIn;
+  if (!Array.isArray(raw) || raw.length === 0) return fallback;
+  const items = raw.slice(0, 3).map((item, i) => {
+    const row = (item && typeof item === "object" ? item : {}) as Record<string, unknown>;
+    const markRaw = String(row.mark || fallback[i]?.mark || "switch");
+    const mark = (WAYS_IN_MARKS as readonly string[]).includes(markRaw)
+      ? (markRaw as WaysInItem["mark"])
+      : fallback[i]?.mark || "switch";
+    return {
+      mark,
+      title: String(row.title || fallback[i]?.title || "").trim() || fallback[i]!.title,
+      copy: String(row.copy || fallback[i]?.copy || "").trim() || fallback[i]!.copy,
+    };
+  });
+  while (items.length < 3) items.push(fallback[items.length]!);
+  return items;
+}
 
 export async function loadCatalog(): Promise<Catalog> {
   const [courseRows, instructorRows, cohortRows, settingRows] = await Promise.all([
@@ -13,12 +34,20 @@ export async function loadCatalog(): Promise<Catalog> {
     db.select().from(settings).where(eq(settings.id, "main")).limit(1),
   ]);
 
-  const parsedSettings = JSON.parse(settingRows[0]?.json || "{}") as LandingSettings;
+  const parsedSettings = JSON.parse(settingRows[0]?.json || "{}") as Partial<LandingSettings>;
+  const defaults = seedCatalog.settings;
 
   return {
     settings: {
+      ...defaults,
       ...parsedSettings,
-      whatsapp: parsedSettings.whatsapp || "+234 803 059 9638",
+      whatsapp: parsedSettings.whatsapp || defaults.whatsapp,
+      bank: { ...defaults.bank, ...(parsedSettings.bank || {}) },
+      proof: Array.isArray(parsedSettings.proof) && parsedSettings.proof.length ? parsedSettings.proof : defaults.proof,
+      faqs: Array.isArray(parsedSettings.faqs) && parsedSettings.faqs.length ? parsedSettings.faqs : defaults.faqs,
+      waysInTitle: String(parsedSettings.waysInTitle || defaults.waysInTitle).trim() || defaults.waysInTitle,
+      tracksTitle: String(parsedSettings.tracksTitle || defaults.tracksTitle).trim() || defaults.tracksTitle,
+      waysIn: normalizeWaysIn(parsedSettings.waysIn),
     },
     courses: courseRows.map(rowToCourse),
     instructors: instructorRows.map(rowToInstructor),

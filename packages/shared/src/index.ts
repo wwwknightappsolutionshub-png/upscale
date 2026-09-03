@@ -151,6 +151,15 @@ export type Course = {
   sortOrder: number;
 };
 
+export const WAYS_IN_MARKS = ["switch", "newbie", "upskill"] as const;
+export type WaysInMark = (typeof WAYS_IN_MARKS)[number];
+
+export type WaysInItem = {
+  mark: WaysInMark;
+  title: string;
+  copy: string;
+};
+
 export type LandingSettings = {
   tagline: string;
   heroLine: string;
@@ -167,6 +176,12 @@ export type LandingSettings = {
   registrationOpen: boolean;
   closedMessage: string;
   faqs: CourseFaq[];
+  /** Homepage “Ways in” band heading (last word is emphasized). */
+  waysInTitle: string;
+  /** Homepage “The tracks” section heading (last word is emphasized). */
+  tracksTitle: string;
+  /** Three audience cards under Ways in. */
+  waysIn: WaysInItem[];
 };
 
 export type Catalog = {
