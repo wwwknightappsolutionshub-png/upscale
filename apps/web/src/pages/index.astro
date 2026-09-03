@@ -154,14 +154,16 @@ const tracksSlab = slabParts(tracksTitle);
             const firstTitle = course.outline[0]?.title;
             return (
               <article class={`track track-${course.slug}`} id={course.slug}>
-                <div class="track-visual" aria-hidden="true">
-                  <span class="track-visual__glow"></span>
-                  <Mark name={course.slug} />
-                </div>
-                <div class="track-copy">
+                <div class="track-top">
+                  <div class="track-visual" aria-hidden="true">
+                    <span class="track-visual__glow"></span>
+                    <Mark name={course.slug} />
+                  </div>
                   <p class="kicker">
                     {course.durationWeeks} weeks · {course.weeklyHours}h / week
                   </p>
+                </div>
+                <div class="track-copy">
                   <h2>{course.name}</h2>
                   <p class="lede">{stripHtml(course.shortPitch)}</p>
                   {(cohort || lead) && (
