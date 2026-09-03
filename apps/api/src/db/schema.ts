@@ -30,6 +30,7 @@ export const instructors = sqliteTable("instructors", {
   initials: text("initials").notNull(),
   accent: text("accent").notNull(),
   courseSlugsJson: text("course_slugs_json").notNull(),
+  photoKey: text("photo_key").notNull().default(""),
 });
 
 export const cohorts = sqliteTable("cohorts", {

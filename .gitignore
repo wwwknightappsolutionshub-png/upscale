@@ -9,6 +9,8 @@ dist
 apps/api/data/*.db
 apps/api/uploads/**
 !apps/api/uploads/.gitkeep
+apps/web/public/media/instructors/**
+!apps/web/public/media/instructors/.gitkeep
 apps/api/data/mail.log
 .DS_Store
 Thumbs.db

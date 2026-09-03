@@ -2,6 +2,8 @@
 import Horizon from "../../layouts/Horizon.astro";
 import SpiralWeb from "../../components/SpiralWeb.astro";
 import { getCatalog } from "../../lib/catalog";
+import { stripHtml } from "../../lib/rich";
+import Avatar from "../../components/Avatar.astro";
 
 export async function getStaticPaths() {
   const catalog = await getCatalog();
@@ -17,31 +19,40 @@ const jsonLd = {
   "@type": "Person",
   name: person.name,
   jobTitle: person.role,
-  description: person.bio,
+  description: stripHtml(person.bio) || person.role,
   worksFor: { "@type": "EducationalOrganization", name: "UPSCALE" },
+  ...(person.photoUrl ? { image: person.photoUrl } : {}),
 };
 ---
 <Horizon
   title={`${person.name} · Instructor | UPSCALE`}
-  description={person.bio}
+  description={stripHtml(person.bio) || person.role || `${person.name} · Instructor`}
   jsonLd={jsonLd}
 >
   <div class="instructor-spread">
     <div class="instructor-copy">
-      <p class="kicker">{person.role}</p>
-      <div class:list={["avatar", person.accent]} style="margin-bottom:1rem">{person.initials}</div>
+      {person.role ? <p class="kicker">{person.role}</p> : null}
+      <div style="margin-bottom:1rem">
+        <Avatar person={person} />
+      </div>
       <h1 class="display">{person.name}</h1>
-      <div class="richtext lede" set:html={person.bio} />
-      <h2>Teaches</h2>
-      <ul>
-        {
-          courses.map((c) => (
-            <li>
-              <a href={`/courses/${c.slug}`}>{c.name}</a>
-            </li>
-          ))
-        }
-      </ul>
+      {stripHtml(person.bio) ? <div class="richtext lede" set:html={person.bio} /> : null}
+      {
+        courses.length > 0 && (
+          <>
+            <h2>Teaches</h2>
+            <ul>
+              {
+                courses.map((c) => (
+                  <li>
+                    <a href={`/courses/${c.slug}`}>{c.name}</a>
+                  </li>
+                ))
+              }
+            </ul>
+          </>
+        )
+      }
     </div>
     <div class="instructor-orbit">
       <SpiralWeb />

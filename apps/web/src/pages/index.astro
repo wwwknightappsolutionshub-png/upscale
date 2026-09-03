@@ -139,6 +139,7 @@ const audiences = [
           const lead = instructorsOf(catalog, course)[0];
           const mid = course.outline[Math.floor(course.outline.length / 2)];
           const last = course.outline[course.outline.length - 1];
+          const firstTitle = course.outline[0]?.title;
           return (
             <article class={`track track-${course.slug} reveal`} id={course.slug}>
               <div class="track-visual">
@@ -159,20 +160,24 @@ const audiences = [
                   ) : null}
                   {lead ? ` · ${lead.name}` : null}
                 </p>
-                <ol class="ticks" aria-label={`${course.name} arc`}>
-                  <li>
-                    <span>01</span>
-                    {course.outline[0].title}
-                  </li>
-                  <li>
-                    <span>→</span>
-                    {mid.title}
-                  </li>
-                  <li>
-                    <span>↑</span>
-                    {last.title}
-                  </li>
-                </ol>
+                {
+                  firstTitle && mid && last ? (
+                    <ol class="ticks" aria-label={`${course.name} arc`}>
+                      <li>
+                        <span>01</span>
+                        {firstTitle}
+                      </li>
+                      <li>
+                        <span>→</span>
+                        {mid.title}
+                      </li>
+                      <li>
+                        <span>↑</span>
+                        {last.title}
+                      </li>
+                    </ol>
+                  ) : null
+                }
                 <a class="text-btn" href={`/courses/${course.slug}`}>
                   Full outline
                 </a>

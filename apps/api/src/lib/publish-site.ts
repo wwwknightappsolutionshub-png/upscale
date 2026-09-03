@@ -1,6 +1,7 @@
 import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
+import { publishInstructorPhotos } from "./storage.ts";
 
 export type PublishResult = { ok: boolean; message: string };
 
@@ -35,33 +36,38 @@ export function publishSite(): Promise<PublishResult> {
     BUILD_TOKEN: process.env.BUILD_TOKEN || "dev-build-token",
   };
 
-  return new Promise((done) => {
-    const child = spawn("npm", ["run", "build"], {
-      cwd: root,
-      env,
-      shell: true,
-      windowsHide: true,
-    });
-    let log = "";
-    child.stdout?.on("data", (chunk) => {
-      log += String(chunk);
-    });
-    child.stderr?.on("data", (chunk) => {
-      log += String(chunk);
-    });
-    child.on("error", (err) => {
-      done({ ok: false, message: `Publish failed to start: ${err.message}` });
-    });
-    child.on("close", (code) => {
-      if (code === 0) {
-        done({ ok: true, message: "Saved and published to the public site." });
-        return;
-      }
-      const tail = log.trim().split(/\r?\n/).slice(-8).join(" ");
-      done({
-        ok: false,
-        message: `Saved in the desk, but the public rebuild failed.${tail ? ` ${tail}` : ""}`,
-      });
-    });
-  });
+  return publishInstructorPhotos()
+    .catch(() => undefined)
+    .then(
+      () =>
+        new Promise<PublishResult>((done) => {
+          const child = spawn("npm", ["run", "build"], {
+            cwd: root,
+            env,
+            shell: true,
+            windowsHide: true,
+          });
+          let log = "";
+          child.stdout?.on("data", (chunk) => {
+            log += String(chunk);
+          });
+          child.stderr?.on("data", (chunk) => {
+            log += String(chunk);
+          });
+          child.on("error", (err) => {
+            done({ ok: false, message: `Publish failed to start: ${err.message}` });
+          });
+          child.on("close", (code) => {
+            if (code === 0) {
+              done({ ok: true, message: "Saved and published to the public site." });
+              return;
+            }
+            const tail = log.trim().split(/\r?\n/).slice(-8).join(" ");
+            done({
+              ok: false,
+              message: `Saved in the desk, but the public rebuild failed.${tail ? ` ${tail}` : ""}`,
+            });
+          });
+        }),
+    );
 }

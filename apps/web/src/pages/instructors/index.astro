@@ -1,6 +1,8 @@
 ---
 import Horizon from "../../layouts/Horizon.astro";
 import { getCatalog } from "../../lib/catalog";
+import { stripHtml } from "../../lib/rich";
+import Avatar from "../../components/Avatar.astro";
 
 const catalog = await getCatalog();
 const jsonLd = {
@@ -28,10 +30,17 @@ const jsonLd = {
       catalog.instructors.map((i) => (
         <li>
           <a href={`/instructors/${i.slug}`}>
-            <div class:list={["avatar", i.accent]}>{i.initials}</div>
+            <Avatar person={i} />
             <div>
               <h2>{i.name}</h2>
-              <p>{i.role} · {i.bio.slice(0, 110)}…</p>
+              {
+                (i.role || stripHtml(i.bio)) && (
+                  <p>
+                    {[i.role, stripHtml(i.bio).slice(0, 110)].filter(Boolean).join(" · ")}
+                    {stripHtml(i.bio).length > 110 ? "…" : ""}
+                  </p>
+                )
+              }
             </div>
           </a>
         </li>

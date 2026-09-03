@@ -293,8 +293,8 @@ button.ghost:hover {
   margin-bottom: 0.85rem;
 }
 .instructor-card .avatar {
-  width: 2.5rem;
-  height: 2.5rem;
+  width: 4.4rem;
+  height: 4.4rem;
   border-radius: 50%;
   display: grid;
   place-items: center;
@@ -302,7 +302,9 @@ button.ghost:hover {
   color: #fff;
   margin-bottom: 0.75rem;
   font-size: 0.85rem;
+  object-fit: cover;
 }
+.instructor-card img.avatar { padding: 0; background: var(--line); }
 .instructor-card .avatar.blue { background: var(--blue); }
 .instructor-card .avatar.red { background: var(--red); }
 .course-grid {

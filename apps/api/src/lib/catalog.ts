@@ -2,6 +2,7 @@ import { asc, eq } from "drizzle-orm";
 import type { Catalog, Course, CourseSlug, Instructor, LandingSettings } from "@upscale/shared";
 import { db } from "../db/client.ts";
 import { auditLogs, cohorts, courses, instructors, settings } from "../db/schema.ts";
+import { instructorPhotoPublicUrl } from "./storage.ts";
 import { nid, nowIso } from "./ids.ts";
 
 export async function loadCatalog(): Promise<Catalog> {
@@ -70,6 +71,7 @@ function rowToInstructor(i: typeof instructors.$inferSelect): Instructor {
     initials: i.initials,
     accent: i.accent as "blue" | "red",
     courseSlugs: JSON.parse(i.courseSlugsJson),
+    photoUrl: instructorPhotoPublicUrl(i.photoKey),
   };
 }
 

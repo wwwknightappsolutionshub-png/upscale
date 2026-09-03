@@ -2,6 +2,8 @@
 import Horizon from "../../layouts/Horizon.astro";
 import { formatMoney, seatsLeft } from "@upscale/shared";
 import { courseOf, formatDay, getCatalog, instructorsOf, nextCohort } from "../../lib/catalog";
+import { stripHtml } from "../../lib/rich";
+import Avatar from "../../components/Avatar.astro";
 
 export async function getStaticPaths() {
   const catalog = await getCatalog();
@@ -14,6 +16,10 @@ const course = courseOf(catalog, slug!);
 if (!course) return Astro.redirect("/courses");
 const cohort = nextCohort(catalog, course.slug);
 const teachers = instructorsOf(catalog, course);
+const visibleOutline = course.outline.filter((w) => w.title || w.topics.length || w.project || w.hours > 0);
+const hasOutcomes = course.outcomes.length > 0;
+const hasTools = course.tools.length > 0;
+const hasPrereqs = stripHtml(course.prerequisites).length > 0;
 const site = import.meta.env.PUBLIC_SITE_URL || "http://localhost:4321";
 const jsonLd = {
   "@context": "https://schema.org",
@@ -83,66 +89,97 @@ const jsonLd = {
 
   <div class="course-body">
     <div class="course-body-grid">
-      <section class="course-block">
-        <h2>You will leave able to</h2>
-        <ul class="course-list">
-          {course.outcomes.map((o) => <li>{o}</li>)}
-        </ul>
-      </section>
+      {
+        hasOutcomes && (
+          <section class="course-block">
+            <h2>You will leave able to</h2>
+            <ul class="course-list">
+              {course.outcomes.map((o) => <li>{o}</li>)}
+            </ul>
+          </section>
+        )
+      }
 
-      <section class="course-block">
-        <h2>Tools</h2>
-        <p class="course-tools">{course.tools.join(" · ")}</p>
-        <h2>Prerequisites</h2>
-        <div class="richtext" set:html={course.prerequisites} />
-      </section>
+      {
+        (hasTools || hasPrereqs) && (
+          <section class="course-block">
+            {hasTools && (
+              <>
+                <h2>Tools</h2>
+                <p class="course-tools">{course.tools.join(" · ")}</p>
+              </>
+            )}
+            {hasPrereqs && (
+              <>
+                <h2>Prerequisites</h2>
+                <div class="richtext" set:html={course.prerequisites} />
+              </>
+            )}
+          </section>
+        )
+      }
 
-      <section class="course-block course-block-wide">
-        <h2 class="heading-rule">Outline</h2>
-        <ol class="syllabus">
-          {
-            course.outline.map((w, i) => (
-              <li class={`week-card tone-${i % 4}`} style={`--i: ${i}`} tabindex="0">
-                <div class="num">{String(w.week).padStart(2, "0")}</div>
-                <h3>{w.title}</h3>
-                <p>{w.topics.join(" · ")} · {w.hours}h</p>
-                {w.project && <span class="proj">Learner's Assessment: {w.project}</span>}
-              </li>
-            ))
-          }
-        </ol>
-      </section>
+      {
+        visibleOutline.length > 0 && (
+          <section class="course-block course-block-wide">
+            <h2 class="heading-rule">Outline</h2>
+            <ol class="syllabus">
+              {
+                visibleOutline.map((w, i) => {
+                  const meta = [w.topics.join(" · "), w.hours > 0 ? `${w.hours}h` : ""].filter(Boolean).join(" · ");
+                  return (
+                    <li class={`week-card tone-${i % 4}`} style={`--i: ${i}`} tabindex="0">
+                      <div class="num">{String(w.week).padStart(2, "0")}</div>
+                      {w.title ? <h3>{w.title}</h3> : null}
+                      {meta ? <p>{meta}</p> : null}
+                      {w.project && <span class="proj">Learner's Assessment: {w.project}</span>}
+                    </li>
+                  );
+                })
+              }
+            </ol>
+          </section>
+        )
+      }
 
-      <section class="course-block course-block-wide">
-        <h2>Instructors</h2>
-        <ul class="cast">
-          {
-            teachers.map((i) => (
-              <li>
-                <a href={`/instructors/${i.slug}`}>
-                  <div class:list={["avatar", i.accent]}>{i.initials}</div>
-                  <div>
-                    <h2>{i.name}</h2>
-                    <p>{i.role}</p>
-                  </div>
-                </a>
-              </li>
-            ))
-          }
-        </ul>
-      </section>
+      {
+        teachers.length > 0 && (
+          <section class="course-block course-block-wide">
+            <h2>Instructors</h2>
+            <ul class="cast">
+              {
+                teachers.map((i) => (
+                  <li>
+                    <a href={`/instructors/${i.slug}`}>
+                      <Avatar person={i} />
+                      <div>
+                        <h2>{i.name}</h2>
+                        {i.role ? <p>{i.role}</p> : null}
+                      </div>
+                    </a>
+                  </li>
+                ))
+              }
+            </ul>
+          </section>
+        )
+      }
 
-      <section class="course-block course-block-wide faq">
-        <h2>Course questions</h2>
-        {
-          course.faq.map((f) => (
-            <details>
-              <summary>{f.q}</summary>
-              <p>{f.a}</p>
-            </details>
-          ))
-        }
-      </section>
+      {
+        course.faq.length > 0 && (
+          <section class="course-block course-block-wide faq">
+            <h2>Course questions</h2>
+            {
+              course.faq.map((f) => (
+                <details>
+                  <summary>{f.q}</summary>
+                  <p>{f.a}</p>
+                </details>
+              ))
+            }
+          </section>
+        )
+      }
     </div>
   </div>
 </Horizon>

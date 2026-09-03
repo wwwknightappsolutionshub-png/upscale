@@ -917,6 +917,11 @@ body.nav-open .rail {
 }
 .avatar.blue { background: var(--blue); }
 .avatar.red { background: var(--red); }
+img.avatar {
+  object-fit: cover;
+  padding: 0;
+  background: rgba(17, 17, 17, 0.08);
+}
 .cast h2 { margin: 0; font-size: 1.5rem; letter-spacing: -0.03em; }
 .cast p { margin: 0.2rem 0 0; color: var(--muted); }
 

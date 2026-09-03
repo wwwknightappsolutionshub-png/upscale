@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { desc, eq } from "drizzle-orm";
 import { Hono } from "hono";
-import type { LandingSettings, WeekBlock } from "@upscale/shared";
+import type { CourseSlug, LandingSettings, WeekBlock } from "@upscale/shared";
 import { db } from "../db/client.ts";
 import {
   adminUsers,
@@ -18,7 +18,7 @@ import { audit, loadCatalog } from "../lib/catalog.ts";
 import { nowIso } from "../lib/ids.ts";
 import { sendMail } from "../lib/mail.ts";
 import { verifyPassword } from "../lib/password.ts";
-import { safeJoinUpload } from "../lib/storage.ts";
+import { safeJoinUpload, saveInstructorPhoto, mimeFromUploadKey } from "../lib/storage.ts";
 import { adminCss } from "../admin/styles.ts";
 import { registrationEmailEditorPage } from "../admin/emails-page.ts";
 import { layout, loginPage, pageHead, roleLabel } from "../admin/html.ts";
@@ -538,26 +538,36 @@ adminRoutes.get("/instructors", async (c) => {
   const admin = c.get("admin");
   const catalog = await loadCatalog();
   const instructorForms = catalog.instructors
-    .map(
-      (i) => `<form id="instructor-form-${i.id}" method="post" action="/admin/instructors/${i.id}" class="stack cardish instructor-card">
-            <div class="avatar ${esc(i.accent)}">${esc(i.initials)}</div>
+    .map((i) => {
+      const photo = i.photoUrl
+        ? `<img class="avatar photo" src="/admin/instructors/${i.id}/photo" alt="${esc(i.name)}" />`
+        : `<div class="avatar ${esc(i.accent)}">${esc(i.initials)}</div>`;
+      return `<form id="instructor-form-${i.id}" method="post" action="/admin/instructors/${i.id}" class="stack cardish instructor-card" enctype="multipart/form-data">
+            ${photo}
             <p class="slug">${esc(i.slug)}</p>
             <label>Name<input name="name" value="${esc(i.name)}" required minlength="2" maxlength="120" /></label>
-            <label>Role<input name="role" value="${esc(i.role)}" required /></label>
-            <label>Bio<textarea id="instructor-bio-${i.id}" name="bio" rows="5" required>${textareaValue(i.bio)}</textarea></label>
+            <label>Role<input name="role" value="${esc(i.role)}" maxlength="120" placeholder="Optional" /></label>
+            <label>Bio<textarea id="instructor-bio-${i.id}" name="bio" rows="5" placeholder="Optional">${textareaValue(i.bio)}</textarea></label>
+            <label>Photo
+              <input type="file" name="photo" accept="image/jpeg,image/png,image/webp" />
+              <span class="note">JPG, PNG, or WebP. Max 5 MB. Leave empty to keep the current photo.</span>
+            </label>
+            ${i.photoUrl ? `<label class="check"><input type="checkbox" name="removePhoto" /> Remove photo</label>` : ""}
             <label>Accent
               <select name="accent">
                 <option value="blue" ${i.accent === "blue" ? "selected" : ""}>Blue</option>
                 <option value="red" ${i.accent === "red" ? "selected" : ""}>Red</option>
               </select>
             </label>
+            <p class="note">Show on courses (optional)</p>
+            ${catalog.courses.map((co) => `<label class="check"><input type="checkbox" name="courses" value="${esc(co.slug)}" ${i.courseSlugs.includes(co.slug) ? "checked" : ""} /> ${esc(co.name)}</label>`).join("")}
             ${formActions("Save instructor")}
-          </form>`,
-    )
+          </form>`;
+    })
     .join("");
   return c.html(
     desk(admin, "Instructors", `
-      ${pageHead("Instructors", "Update instructor names, roles, and bios shown on the public site.")}
+      ${pageHead("Instructors", "Update instructor names, roles, bios, and photos shown on the public site. Role, bio, and photo can be left empty.")}
       ${flashBanner(c)}
       <div class="instructor-grid">
       ${instructorForms}
@@ -570,23 +580,62 @@ adminRoutes.get("/instructors", async (c) => {
   );
 });
 
+adminRoutes.get("/instructors/:id/photo", async (c) => {
+  const admin = c.get("admin");
+  if (!admin) return c.text("Unauthorized", 401);
+  const row = (await db.select().from(instructors).where(eq(instructors.id, c.req.param("id"))).limit(1))[0];
+  if (!row?.photoKey) return c.text("Not found", 404);
+  const buf = await readFile(safeJoinUpload(row.photoKey));
+  return c.body(buf, 200, {
+    "content-type": mimeFromUploadKey(row.photoKey),
+    "cache-control": "private, max-age=60",
+  });
+});
+
 adminRoutes.post("/instructors/:id", async (c) => {
   const admin = c.get("admin");
   if (!canEditInstructors(roleOf(admin))) return forbid(c, admin, "You cannot edit instructors.");
-  const body = await c.req.parseBody();
+  const id = c.req.param("id");
+  const row = (await db.select().from(instructors).where(eq(instructors.id, id)).limit(1))[0];
+  if (!row) return c.text("Not found", 404);
+  const body = await c.req.parseBody({ all: true });
   const name = String(body.name || "").trim();
   if (name.length < 2) return c.text("Instructor name must be at least 2 characters.", 400);
+  let photoKey = row.photoKey || "";
+  if (body.removePhoto) photoKey = "";
+  const photo = body.photo;
+  if (photo instanceof File && photo.size > 0) {
+    try {
+      const saved = await saveInstructorPhoto(photo, id);
+      photoKey = saved.fileKey;
+    } catch (err) {
+      return c.text(err instanceof Error ? err.message : "Could not save photo.", 400);
+    }
+  }
+  const rawCourses = body.courses;
+  const selectedCourses = (Array.isArray(rawCourses) ? rawCourses : rawCourses ? [rawCourses] : []).map(String) as CourseSlug[];
   await db
     .update(instructors)
     .set({
       name,
       initials: initialsFromName(name),
-      role: String(body.role || ""),
+      role: String(body.role || "").trim(),
       bio: String(body.bio || ""),
       accent: String(body.accent || "blue"),
+      photoKey,
+      courseSlugsJson: JSON.stringify(selectedCourses),
     })
-    .where(eq(instructors.id, c.req.param("id")));
-  await audit(admin.email, "instructor_update", "instructor", c.req.param("id"), { name });
+    .where(eq(instructors.id, id));
+  const courseRows = await db.select().from(courses);
+  for (const course of courseRows) {
+    const ids = JSON.parse(course.instructorIdsJson) as string[];
+    const want = selectedCourses.includes(course.slug as CourseSlug);
+    const has = ids.includes(id);
+    if (want === has) continue;
+    const next = want ? [...ids, id] : ids.filter((existing) => existing !== id);
+    await db.update(courses).set({ instructorIdsJson: JSON.stringify(next) }).where(eq(courses.id, course.id));
+  }
+  await audit(admin.email, "instructor_update", "instructor", id, { name });
   return c.redirect(await publishAndRedirect("/admin/instructors"));
 });
 

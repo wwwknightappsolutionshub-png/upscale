@@ -10,6 +10,7 @@ export const seedInstructors: Instructor[] = [
     initials: "AC",
     accent: "blue",
     courseSlugs: ["graphic-design"],
+    photoUrl: null,
   },
   {
     id: "ins_nico",
@@ -20,6 +21,7 @@ export const seedInstructors: Instructor[] = [
     initials: "NA",
     accent: "red",
     courseSlugs: ["front-end-development", "full-stack-development"],
+    photoUrl: null,
   },
   {
     id: "ins_priya",
@@ -30,6 +32,7 @@ export const seedInstructors: Instructor[] = [
     initials: "PR",
     accent: "blue",
     courseSlugs: ["backend-development", "full-stack-development"],
+    photoUrl: null,
   },
   {
     id: "ins_owen",
@@ -40,6 +43,18 @@ export const seedInstructors: Instructor[] = [
     initials: "OB",
     accent: "red",
     courseSlugs: ["full-stack-development"],
+    photoUrl: null,
+  },
+  {
+    id: "ins_faculty",
+    slug: "faculty",
+    name: "Faculty",
+    role: "",
+    bio: "",
+    initials: "F",
+    accent: "blue",
+    courseSlugs: [],
+    photoUrl: null,
   },
 ];
 

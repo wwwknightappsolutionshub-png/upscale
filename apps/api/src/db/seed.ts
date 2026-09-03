@@ -6,6 +6,26 @@ import { ensureEmailTemplates } from "../lib/email-templates.ts";
 import { hashPassword } from "../lib/password.ts";
 import { nid, nowIso } from "../lib/ids.ts";
 
+const FIFTH_INSTRUCTOR = {
+  id: "ins_faculty",
+  slug: "faculty",
+  name: "Faculty",
+  role: "",
+  bio: "",
+  initials: "F",
+  accent: "blue",
+  courseSlugsJson: "[]",
+  photoKey: "",
+};
+
+async function ensureFifthInstructor() {
+  const byId = await db.select({ id: instructors.id }).from(instructors).where(eq(instructors.id, FIFTH_INSTRUCTOR.id)).limit(1);
+  if (byId.length) return;
+  const bySlug = await db.select({ id: instructors.id }).from(instructors).where(eq(instructors.slug, FIFTH_INSTRUCTOR.slug)).limit(1);
+  if (bySlug.length) return;
+  await db.insert(instructors).values(FIFTH_INSTRUCTOR);
+}
+
 export async function seedIfEmpty() {
   const existing = await db.select({ id: courses.id }).from(courses).limit(1);
   if (existing.length === 0) {
@@ -41,6 +61,7 @@ export async function seedIfEmpty() {
         initials: i.initials,
         accent: i.accent,
         courseSlugsJson: JSON.stringify(i.courseSlugs),
+        photoKey: "",
       });
     }
     for (const co of seedCatalog.cohorts) {
@@ -64,6 +85,7 @@ export async function seedIfEmpty() {
     });
   }
 
+  await ensureFifthInstructor();
   await ensureEmailTemplates();
 
   const email = (process.env.ADMIN_EMAIL || "leo.a@example.org").toLowerCase();

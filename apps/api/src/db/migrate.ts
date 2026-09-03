@@ -29,7 +29,8 @@ CREATE TABLE IF NOT EXISTS instructors (
   bio TEXT NOT NULL,
   initials TEXT NOT NULL,
   accent TEXT NOT NULL,
-  course_slugs_json TEXT NOT NULL
+  course_slugs_json TEXT NOT NULL,
+  photo_key TEXT NOT NULL DEFAULT ''
 );
 CREATE TABLE IF NOT EXISTS cohorts (
   id TEXT PRIMARY KEY,
@@ -126,6 +127,11 @@ export async function ensureSchema() {
   }
   try {
     await client.execute("ALTER TABLE admin_users ADD COLUMN role TEXT NOT NULL DEFAULT 'super_admin'");
+  } catch {
+    /* column exists */
+  }
+  try {
+    await client.execute("ALTER TABLE instructors ADD COLUMN photo_key TEXT NOT NULL DEFAULT ''");
   } catch {
     /* column exists */
   }

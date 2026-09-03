@@ -10,29 +10,28 @@ function esc(value: string) {
 }
 
 function weekCard(week: WeekBlock) {
+  const hours = week.hours > 0 ? String(week.hours) : "";
   return `<article class="outline-week cardish">
     <div class="outline-week-head">
-      <h4>Week <input type="number" class="outline-week-num" min="1" value="${week.week}" required /></h4>
+      <h4>Week <input type="number" class="outline-week-num" min="1" value="${week.week}" /></h4>
       <button type="button" class="outline-week-remove ghost">Remove</button>
     </div>
     <div class="form-grid">
-      <label class="full">Title<input type="text" class="outline-week-title" value="${esc(week.title)}" required maxlength="200" /></label>
-      <label>Hours<input type="number" class="outline-week-hours" min="1" max="80" value="${week.hours}" required /></label>
-      <label class="full">Topics (one per line)<textarea class="outline-week-topics" rows="4">${esc(week.topics.join("\n"))}</textarea></label>
+      <label class="full">Title<input type="text" class="outline-week-title" value="${esc(week.title)}" maxlength="200" placeholder="Optional" /></label>
+      <label>Hours<input type="number" class="outline-week-hours" min="1" max="80" value="${hours}" placeholder="Optional" /></label>
+      <label class="full">Topics (one per line)<textarea class="outline-week-topics" rows="4" placeholder="Optional">${esc(week.topics.join("\n"))}</textarea></label>
       <label class="full">Learner's assessment<textarea class="outline-week-project" rows="2" placeholder="Leave blank if none for this week">${week.project ? esc(week.project) : ""}</textarea></label>
     </div>
   </article>`;
 }
 
 export function outlineEditorHtml(outline: WeekBlock[]) {
-  const weeks = outline.length
-    ? outline.map((w) => weekCard(w)).join("")
-    : weekCard({ week: 1, title: "", hours: 8, topics: [], project: null });
+  const weeks = outline.map((w) => weekCard(w)).join("");
   return `<div class="outline-editor full">
     <div class="outline-editor-head">
       <div>
         <h3>Course outline</h3>
-        <p class="note">Edit each week below. Topics are one per line. Leave assessment blank when there is no project that week.</p>
+        <p class="note">Every field is optional. Leave a week blank if you do not want it on the public page, or remove the week entirely.</p>
       </div>
       <button type="button" class="ghost" id="outline-add-week">Add week</button>
     </div>
@@ -70,13 +69,12 @@ export function outlineEditorBoot() {
       }
 
       function nextWeekNumber() {
-        const nums = readWeeks().map((w) => w.week);
+        const nums = readWeeks().map((w) => w.week).filter((n) => n > 0);
         return nums.length ? Math.max(...nums) + 1 : 1;
       }
 
       function bindCard(card) {
         card.querySelector(".outline-week-remove")?.addEventListener("click", () => {
-          if (list.querySelectorAll(".outline-week").length <= 1) return;
           card.remove();
           syncJson();
         });
@@ -87,13 +85,13 @@ export function outlineEditorBoot() {
         article.className = "outline-week cardish";
         article.innerHTML =
           '<div class="outline-week-head">' +
-          '<h4>Week <input type="number" class="outline-week-num" min="1" value="' + weekNum + '" required /></h4>' +
+          '<h4>Week <input type="number" class="outline-week-num" min="1" value="' + weekNum + '" /></h4>' +
           '<button type="button" class="outline-week-remove ghost">Remove</button>' +
           "</div>" +
           '<div class="form-grid">' +
-          '<label class="full">Title<input type="text" class="outline-week-title" value="" required maxlength="200" /></label>' +
-          '<label>Hours<input type="number" class="outline-week-hours" min="1" max="80" value="8" required /></label>' +
-          '<label class="full">Topics (one per line)<textarea class="outline-week-topics" rows="4"></textarea></label>' +
+          '<label class="full">Title<input type="text" class="outline-week-title" value="" maxlength="200" placeholder="Optional" /></label>' +
+          '<label>Hours<input type="number" class="outline-week-hours" min="1" max="80" value="" placeholder="Optional" /></label>' +
+          '<label class="full">Topics (one per line)<textarea class="outline-week-topics" rows="4" placeholder="Optional"></textarea></label>' +
           '<label class="full">Learner\\'s assessment<textarea class="outline-week-project" rows="2" placeholder="Leave blank if none for this week"></textarea></label>' +
           "</div>";
         list.appendChild(article);

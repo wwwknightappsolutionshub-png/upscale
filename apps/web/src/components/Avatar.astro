@@ -1,0 +1,17 @@
+---
+import type { Instructor } from "@upscale/shared";
+
+interface Props {
+  person: Pick<Instructor, "name" | "initials" | "accent" | "photoUrl">;
+  alt?: string;
+}
+
+const { person, alt = "" } = Astro.props;
+---
+{
+  person.photoUrl ? (
+    <img class={`avatar photo ${person.accent}`} src={person.photoUrl} alt={alt || person.name} width="88" height="88" />
+  ) : (
+    <div class:list={["avatar", person.accent]}>{person.initials}</div>
+  )
+}

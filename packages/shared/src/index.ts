@@ -113,6 +113,7 @@ export type Instructor = {
   initials: string;
   accent: "blue" | "red";
   courseSlugs: CourseSlug[];
+  photoUrl: string | null;
 };
 
 export type Cohort = {
