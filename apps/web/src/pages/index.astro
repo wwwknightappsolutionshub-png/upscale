@@ -30,7 +30,7 @@ const jsonLd = {
   ],
 };
 
-const audiences = catalog.settings.waysIn;
+const audiences = catalog.settings.waysIn ?? [];
 const waysInTitle = catalog.settings.waysInTitle || "Ways in";
 const tracksTitle = catalog.settings.tracksTitle || "The tracks";
 
