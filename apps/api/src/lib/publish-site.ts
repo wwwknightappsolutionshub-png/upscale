@@ -30,8 +30,9 @@ export function publishSite(): Promise<PublishResult> {
   const port = process.env.PORT || "8787";
   const env = {
     ...process.env,
-    // Prefer local API during build so catalog is always fresh and auth is reliable.
-    PUBLIC_API_URL: `http://127.0.0.1:${port}`,
+    // Local loopback for SSG catalog fetch only — never bake this into browser scripts.
+    BUILD_API_URL: `http://127.0.0.1:${port}`,
+    // Keep PUBLIC_API_URL from .env as the browser-facing API origin.
     PUBLIC_SITE_URL: process.env.PUBLIC_SITE_URL || process.env.WEB_ORIGIN || "http://localhost:4321",
     BUILD_TOKEN: process.env.BUILD_TOKEN || "dev-build-token",
   };

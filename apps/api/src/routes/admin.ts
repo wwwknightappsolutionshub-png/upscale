@@ -16,7 +16,7 @@ import {
   students,
 } from "../db/schema.ts";
 import { createSession, currentAdmin, destroySession, requireAdmin } from "../lib/auth.ts";
-import { audit, loadCatalog } from "../lib/catalog.ts";
+import { audit, loadCatalog, nextCohort } from "../lib/catalog.ts";
 import { nid, nowIso } from "../lib/ids.ts";
 import { sendMail } from "../lib/mail.ts";
 import { verifyPassword } from "../lib/password.ts";
@@ -476,6 +476,8 @@ adminRoutes.get("/courses/:id", async (c) => {
   if (!canManageSiteContent(roleOf(admin))) return forbid(c, admin, "Only admins can manage courses.");
   const row = (await db.select().from(courses).where(eq(courses.id, c.req.param("id"))).limit(1))[0];
   if (!row) return c.text("Not found", 404);
+  const catalog = await loadCatalog();
+  const openCohort = nextCohort(catalog, row.slug as CourseSlug);
   const outline = JSON.parse(row.outlineJson) as WeekBlock[];
   return c.html(
     desk(admin, row.name, `
@@ -487,11 +489,13 @@ adminRoutes.get("/courses/:id", async (c) => {
           <label class="full">Name<input name="name" value="${esc(row.name)}" required maxlength="120" /></label>
           <label>Price<input name="price" type="number" min="0" value="${row.price}" required /></label>
           <label>Currency<input name="currency" value="${esc(row.currency)}" required /></label>
+          <label>NGN equivalent<input name="priceNgn" type="number" min="0" step="1" value="${openCohort?.priceNgn ?? ""}" placeholder="Optional" /></label>
           <label>Seat cap<input name="seatCap" type="number" min="1" value="${row.seatCap}" required /></label>
           <label>Duration (weeks)<input name="durationWeeks" type="number" min="1" value="${row.durationWeeks}" required /></label>
           <label>Weekly hours<input name="weeklyHours" type="number" min="1" value="${row.weeklyHours}" required /></label>
           <label class="check"><input type="checkbox" name="registrationOpen" ${row.registrationOpen ? "checked" : ""} /> Registration open</label>
         </div>
+        <p class="note">NGN equivalent is saved on the open cohort for this course and shown on registration (e.g. $450 · ₦675,000). You can also edit it under <a href="/admin/cohorts">Cohorts</a>.</p>
         <p class="note">Name, short pitch, duration, and outline also drive the homepage “The tracks” cards.</p>
         <label class="full">Short pitch<textarea id="course-short-pitch" name="shortPitch" rows="4" required>${textareaValue(row.shortPitch)}</textarea></label>
         <label class="full">Outcomes (one per line)<textarea name="outcomes" rows="6">${esc(JSON.parse(row.outcomesJson).join("\n"))}</textarea></label>
@@ -527,13 +531,17 @@ adminRoutes.post("/courses/:id", async (c) => {
   } catch {
     return c.text("Outline JSON is not valid", 400);
   }
+  const price = Number(body.price);
+  const currency = String(body.currency || "USD");
+  const rawNgn = String(body.priceNgn ?? "").trim();
+  const priceNgn = rawNgn === "" ? 0 : Math.max(0, Math.round(Number(rawNgn)));
   await db
     .update(courses)
     .set({
       name: String(body.name || row.name).trim() || row.name,
       shortPitch: String(body.shortPitch || ""),
-      price: Number(body.price),
-      currency: String(body.currency || "USD"),
+      price,
+      currency,
       seatCap: Number(body.seatCap),
       durationWeeks: Number(body.durationWeeks),
       weeklyHours: Number(body.weeklyHours),
@@ -545,6 +553,17 @@ adminRoutes.post("/courses/:id", async (c) => {
       outlineJson,
     })
     .where(eq(courses.id, id));
+
+  // Keep intake pricing in sync so registration shows NGN immediately.
+  await db
+    .update(cohorts)
+    .set({
+      price,
+      currency,
+      priceNgn: Number.isFinite(priceNgn) ? priceNgn : 0,
+    })
+    .where(eq(cohorts.courseSlug, row.slug));
+
   await audit(admin.email, "course_update", "course", id);
   return c.redirect(await publishAndRedirect(`/admin/courses/${id}`));
 });

@@ -456,8 +456,11 @@ const courseFees = Object.fromEntries(
         "Your details were saved. Continue to view payment details and upload your transfer receipt.",
         "Continue to payment",
       );
-    } catch {
-      const message = "Network error. Check your connection and try again.";
+    } catch (err) {
+      const message =
+        err instanceof TypeError
+          ? "Could not reach the registration server. Please try again in a moment."
+          : "Network error. Check your connection and try again.";
       formError.hidden = false;
       formError.textContent = message;
       showResultDialog("err", "Registration failed", message, "Try again");

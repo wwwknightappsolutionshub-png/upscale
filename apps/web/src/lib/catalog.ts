@@ -1,7 +1,10 @@
 import type { Catalog, Course, CourseSlug, LandingSettings } from "@upscale/shared";
 import { seedCatalog } from "@upscale/shared/seed";
 
-const api = import.meta.env.PUBLIC_API_URL || "http://localhost:8787";
+/** Browser-facing API (baked into register/payment scripts). Must be publicly reachable. */
+const publicApi = import.meta.env.PUBLIC_API_URL || "http://localhost:8787";
+/** Build-time catalog fetch (can be localhost when API runs on the same server). */
+const catalogApi = import.meta.env.BUILD_API_URL || publicApi;
 const token = import.meta.env.BUILD_TOKEN || "dev-build-token";
 
 function withSettingsDefaults(catalog: Catalog): Catalog {
@@ -28,7 +31,7 @@ export async function getCatalog(): Promise<Catalog> {
   try {
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), 2000);
-    const res = await fetch(`${api}/public/catalog`, {
+    const res = await fetch(`${catalogApi}/public/catalog`, {
       headers: { Authorization: `Bearer ${token}` },
       signal: ctrl.signal,
     });
@@ -64,4 +67,5 @@ export function formatDay(iso: string) {
   return dt.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
 }
 
-export const apiUrl = api;
+/** Public API base URL for browser fetch (register, payment, evidence). */
+export const apiUrl = publicApi;

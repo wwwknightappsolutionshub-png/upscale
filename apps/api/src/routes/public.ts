@@ -44,6 +44,7 @@ publicRoutes.get("/catalog", async (c) => {
 });
 
 publicRoutes.post("/register", async (c) => {
+  try {
   if (!rateLimit(`reg:${clientIp(c)}`, 8, 60 * 60 * 1000)) {
     return c.json({ error: "Too many registrations from this network. Try later." }, 429);
   }
@@ -182,6 +183,11 @@ publicRoutes.post("/register", async (c) => {
     bank,
     paymentUrl: payUrl,
   });
+  } catch (err) {
+    console.error("register failed", err);
+    const message = err instanceof Error ? err.message : "Registration failed. Try again.";
+    return c.json({ error: message }, 500);
+  }
 });
 
 publicRoutes.get("/status", async (c) => {
