@@ -2,7 +2,8 @@ import { eq } from "drizzle-orm";
 import { Hono } from "hono";
 import {
   COURSE_PREFIX,
-  formatMoney,
+  bankForCountry,
+  formatFeeLabel,
   formatNgPhone,
   isNigeria,
   normalizeNgPhone,
@@ -137,7 +138,8 @@ publicRoutes.post("/register", async (c) => {
   await audit("public", "register", "student", id, { course: parsed.data.courseSlug, email });
 
   const payUrl = `${site}/payment?token=${token}`;
-  const amount = formatMoney(cohort.price, cohort.currency);
+  const amount = formatFeeLabel(cohort.price, cohort.currency, cohort.priceNgn);
+  const bank = bankForCountry(catalog.settings, parsed.data.country);
   const rendered = await buildRegistrationEmail({
     name: parsed.data.name,
     email,
@@ -149,10 +151,10 @@ publicRoutes.post("/register", async (c) => {
     timezone: cohort.timezone,
     amount,
     referenceCode,
-    bankName: catalog.settings.bank.bankName,
-    accountName: catalog.settings.bank.accountName,
-    accountNumber: catalog.settings.bank.accountNumber,
-    bankInstructions: catalog.settings.bank.instructions,
+    bankName: bank.bankName,
+    accountName: bank.accountName,
+    accountNumber: bank.accountNumber,
+    bankInstructions: bank.instructions,
     paymentUrl: payUrl,
     supportEmail: catalog.settings.email,
   });
@@ -177,7 +179,7 @@ publicRoutes.post("/register", async (c) => {
       daysLabel: cohort.daysLabel,
       timeLabel: cohort.timeLabel,
     },
-    bank: catalog.settings.bank,
+    bank,
     paymentUrl: payUrl,
   });
 });
@@ -201,10 +203,11 @@ publicRoutes.get("/status", async (c) => {
     status: student.status,
     course: course?.name,
     courseSlug: student.courseSlug,
-    amount: cohort ? formatMoney(cohort.price, cohort.currency) : null,
+    amount: cohort ? formatFeeLabel(cohort.price, cohort.currency, cohort.priceNgn) : null,
     price: cohort?.price ?? 0,
     currency: cohort?.currency ?? "USD",
-    bank: catalog.settings.bank,
+    priceNgn: cohort?.priceNgn ?? null,
+    bank: bankForCountry(catalog.settings, student.country || ""),
     cohort,
     evidenceStatus: latest?.status ?? null,
     reviewNotes: student.status === "rejected" ? latest?.reviewNotes ?? "" : "",
@@ -235,12 +238,14 @@ publicRoutes.post("/evidence", async (c) => {
     const saved = await saveEvidenceFile(file, student.id);
     const catalog = await loadCatalog();
     const cohort = catalog.cohorts.find((x) => x.id === student.cohortId);
+    const usesNgn = isNigeria(student.country) && !!cohort?.priceNgn && cohort.priceNgn > 0;
+    const claimedAmount = usesNgn ? cohort!.priceNgn! : cohort?.price ?? 0;
     const id = nid("evd");
     const ts = nowIso();
     await db.insert(paymentEvidence).values({
       id,
       studentId: student.id,
-      amount: cohort?.price ?? 0,
+      amount: claimedAmount,
       method,
       fileKey: saved.fileKey,
       mime: saved.mime,

@@ -45,6 +45,7 @@ export const cohorts = sqliteTable("cohorts", {
   seatsTaken: integer("seats_taken").notNull().default(0),
   price: integer("price").notNull(),
   currency: text("currency").notNull(),
+  priceNgn: integer("price_ngn").notNull().default(0),
 });
 
 export const settings = sqliteTable("settings", {

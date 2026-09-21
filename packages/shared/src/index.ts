@@ -128,6 +128,8 @@ export type Cohort = {
   seatsTaken: number;
   price: number;
   currency: string;
+  /** Optional fixed NGN bank-transfer amount for this intake. */
+  priceNgn: number | null;
 };
 
 export type Course = {
@@ -160,16 +162,21 @@ export type WaysInItem = {
   copy: string;
 };
 
+export type BankDetails = {
+  bankName: string;
+  accountName: string;
+  accountNumber: string;
+  instructions: string;
+};
+
 export type LandingSettings = {
   tagline: string;
   heroLine: string;
   proof: { value: string; label: string }[];
-  bank: {
-    bankName: string;
-    accountName: string;
-    accountNumber: string;
-    instructions: string;
-  };
+  /** NGN transfer details — shown when the registrant’s country is Nigeria. */
+  bank: BankDetails;
+  /** USD transfer details — shown for all other countries. */
+  bankUsd: BankDetails;
   timezone: string;
   email: string;
   whatsapp: string;
@@ -193,7 +200,7 @@ export type Catalog = {
 
 export function formatMoney(amount: number, currency: string) {
   try {
-    return new Intl.NumberFormat("en-US", {
+    return new Intl.NumberFormat(currency === "NGN" ? "en-NG" : "en-US", {
       style: "currency",
       currency,
       maximumFractionDigits: 0,
@@ -201,6 +208,29 @@ export function formatMoney(amount: number, currency: string) {
   } catch {
     return `${currency} ${amount}`;
   }
+}
+
+/** Primary fee plus optional NGN equivalent, e.g. `$450 · ₦675,000`. */
+export function formatFeeLabel(price: number, currency: string, priceNgn?: number | null) {
+  const primary = formatMoney(price, currency);
+  if (priceNgn == null || !Number.isFinite(priceNgn) || priceNgn <= 0) return primary;
+  return `${primary} · ${formatMoney(priceNgn, "NGN")}`;
+}
+
+/** Pick NGN bank for Nigeria registrants; USD bank for everyone else. */
+export function bankForCountry(settings: LandingSettings, country: string): BankDetails {
+  if (isNigeria(country)) return settings.bank;
+  if (isConfiguredBank(settings.bankUsd)) return settings.bankUsd;
+  return settings.bank;
+}
+
+function isConfiguredBank(bank: BankDetails) {
+  const name = String(bank.bankName || "").trim();
+  const number = String(bank.accountNumber || "").trim();
+  if (!name || !number) return false;
+  if (/^set in admin$/i.test(name)) return false;
+  if (/^0+$/.test(number)) return false;
+  return true;
 }
 
 export function seatsLeft(cohort: Cohort) {

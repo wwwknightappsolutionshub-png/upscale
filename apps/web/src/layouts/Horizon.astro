@@ -1,7 +1,7 @@
 ---
 import "../styles/global.css";
 import Seo from "../components/Seo.astro";
-import { formatMoney, seatsLeft } from "@upscale/shared";
+import { formatFeeLabel, seatsLeft } from "@upscale/shared";
 import { formatDay, getCatalog, nextCohort } from "../lib/catalog";
 
 interface Props {
@@ -123,7 +123,7 @@ const whatsappHref = `https://wa.me/${whatsappDigits}`;
             <>
               <strong>{course.name}</strong>
               <br />
-              {formatDay(cohort.startDate)} · {formatMoney(cohort.price, cohort.currency)} ·{" "}
+              {formatDay(cohort.startDate)} · {formatFeeLabel(cohort.price, cohort.currency, cohort.priceNgn)} ·{" "}
               {seatsLeft(cohort)} seats
             </>
           ) : (

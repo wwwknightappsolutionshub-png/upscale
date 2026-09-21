@@ -1,6 +1,6 @@
 ---
 import Horizon from "../../layouts/Horizon.astro";
-import { formatMoney, seatsLeft } from "@upscale/shared";
+import { formatFeeLabel, seatsLeft } from "@upscale/shared";
 import { courseOf, formatDay, getCatalog, instructorsOf, nextCohort } from "../../lib/catalog";
 import { stripHtml } from "../../lib/rich";
 import Avatar from "../../components/Avatar.astro";
@@ -67,7 +67,7 @@ const jsonLd = {
               <span>starts</span>
             </li>
             <li>
-              <strong>{formatMoney(cohort.price, cohort.currency)}</strong>
+              <strong>{formatFeeLabel(cohort.price, cohort.currency, cohort.priceNgn)}</strong>
               <span>fee</span>
             </li>
             <li>

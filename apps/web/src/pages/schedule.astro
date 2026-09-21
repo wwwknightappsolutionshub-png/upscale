@@ -1,6 +1,6 @@
 ---
 import Horizon from "../layouts/Horizon.astro";
-import { formatMoney, seatsLeft } from "@upscale/shared";
+import { formatFeeLabel, seatsLeft } from "@upscale/shared";
 import { formatDay, getCatalog, nextCohort } from "../lib/catalog";
 
 const catalog = await getCatalog();
@@ -49,7 +49,7 @@ const rows = catalog.courses
             <ul class="schedule-meta">
               <li>{cohort.daysLabel}</li>
               <li>{cohort.timeLabel}</li>
-              <li>{formatMoney(cohort.price, cohort.currency)}</li>
+              <li>{formatFeeLabel(cohort.price, cohort.currency, cohort.priceNgn)}</li>
             </ul>
             <div class="schedule-seats">
               <div class="schedule-bar" style={`--fill: ${fill}%`} aria-hidden="true">

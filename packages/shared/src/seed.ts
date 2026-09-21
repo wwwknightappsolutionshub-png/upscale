@@ -251,7 +251,13 @@ export const seedCatalog: Catalog = {
       bankName: "Set in admin",
       accountName: "UPSCALE Training",
       accountNumber: "0000000000",
-      instructions: "Transfer the exact cohort fee. Put your UPSCALE reference in the narration. Then upload the receipt on the payment page.",
+      instructions: "Transfer the exact cohort fee in Naira. Put your UPSCALE reference in the narration. Then upload the receipt on the payment page.",
+    },
+    bankUsd: {
+      bankName: "",
+      accountName: "",
+      accountNumber: "",
+      instructions: "Transfer the exact cohort fee in USD. Put your UPSCALE reference in the narration. Then upload the receipt on the payment page.",
     },
     timezone: "GMT+1",
     email: "frank.g@example.org",
@@ -301,6 +307,7 @@ export const seedCatalog: Catalog = {
       seatsTaken: 0,
       price: 450,
       currency: "USD",
+      priceNgn: null,
     },
     {
       id: "coh_fe_26a",
@@ -314,6 +321,7 @@ export const seedCatalog: Catalog = {
       seatsTaken: 0,
       price: 550,
       currency: "USD",
+      priceNgn: null,
     },
     {
       id: "coh_be_26a",
@@ -327,6 +335,7 @@ export const seedCatalog: Catalog = {
       seatsTaken: 0,
       price: 550,
       currency: "USD",
+      priceNgn: null,
     },
     {
       id: "coh_fs_26a",
@@ -340,6 +349,7 @@ export const seedCatalog: Catalog = {
       seatsTaken: 0,
       price: 850,
       currency: "USD",
+      priceNgn: null,
     },
   ],
 };

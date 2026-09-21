@@ -13,6 +13,7 @@ function withSettingsDefaults(catalog: Catalog): Catalog {
       ...defaults,
       ...raw,
       bank: { ...defaults.bank, ...(raw.bank || {}) },
+      bankUsd: { ...defaults.bankUsd, ...(raw.bankUsd || {}) },
       proof: Array.isArray(raw.proof) && raw.proof.length ? raw.proof : defaults.proof,
       faqs: Array.isArray(raw.faqs) && raw.faqs.length ? raw.faqs : defaults.faqs,
       waysInTitle: String(raw.waysInTitle || defaults.waysInTitle).trim() || defaults.waysInTitle,

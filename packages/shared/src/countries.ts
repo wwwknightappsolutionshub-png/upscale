@@ -198,7 +198,7 @@ const WORLD_COUNTRIES = [
 
 export const DEFAULT_COUNTRY = "Nigeria";
 
-export const COUNTRIES = [DEFAULT_COUNTRY, ...WORLD_COUNTRIES.filter((c) => c !== DEFAULT_COUNTRY).sort()] as const;
+export const COUNTRIES = [DEFAULT_COUNTRY, ...[...WORLD_COUNTRIES].sort()] as const;
 
 export type CountryName = (typeof COUNTRIES)[number];
 

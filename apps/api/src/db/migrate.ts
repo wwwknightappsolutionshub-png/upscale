@@ -43,7 +43,8 @@ CREATE TABLE IF NOT EXISTS cohorts (
   seat_cap INTEGER NOT NULL,
   seats_taken INTEGER NOT NULL DEFAULT 0,
   price INTEGER NOT NULL,
-  currency TEXT NOT NULL
+  currency TEXT NOT NULL,
+  price_ngn INTEGER NOT NULL DEFAULT 0
 );
 CREATE TABLE IF NOT EXISTS settings (
   id TEXT PRIMARY KEY,
@@ -132,6 +133,11 @@ export async function ensureSchema() {
   }
   try {
     await client.execute("ALTER TABLE instructors ADD COLUMN photo_key TEXT NOT NULL DEFAULT ''");
+  } catch {
+    /* column exists */
+  }
+  try {
+    await client.execute("ALTER TABLE cohorts ADD COLUMN price_ngn INTEGER NOT NULL DEFAULT 0");
   } catch {
     /* column exists */
   }

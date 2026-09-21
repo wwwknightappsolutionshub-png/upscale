@@ -77,6 +77,7 @@ export async function seedIfEmpty() {
         seatsTaken: co.seatsTaken,
         price: co.price,
         currency: co.currency,
+        priceNgn: co.priceNgn && co.priceNgn > 0 ? co.priceNgn : 0,
       });
     }
     await db.insert(settings).values({

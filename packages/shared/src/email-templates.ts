@@ -17,7 +17,7 @@ export const EMAIL_MERGE_TAGS: { key: string; label: string; sample: string }[] 
   { key: "daysLabel", label: "Class days", sample: "Mon & Wed" },
   { key: "timeLabel", label: "Class time", sample: "18:00–20:30" },
   { key: "timezone", label: "Timezone", sample: "GMT+1" },
-  { key: "amount", label: "Fee", sample: "$450" },
+  { key: "amount", label: "Fee", sample: "$450 · ₦675,000" },
   { key: "referenceCode", label: "Payment reference", sample: "UPS-GD-4821" },
   { key: "bankName", label: "Bank name", sample: "Example Bank" },
   { key: "accountName", label: "Account name", sample: "UPSCALE Training" },

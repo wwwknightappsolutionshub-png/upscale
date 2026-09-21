@@ -1,7 +1,7 @@
 ---
 import Horizon from "../layouts/Horizon.astro";
 import Mark from "../components/Mark.astro";
-import { formatMoney } from "@upscale/shared";
+import { formatFeeLabel } from "@upscale/shared";
 import { formatDay, getCatalog, instructorsOf, nextCohort } from "../lib/catalog";
 import { stripHtml } from "../lib/rich";
 import "../styles/home.css";
@@ -180,7 +180,7 @@ const tracksSlab = slabParts(tracksTitle);
                           </li>
                           <li>
                             <span>Fee</span>
-                            {formatMoney(cohort.price, cohort.currency)}
+                            {formatFeeLabel(cohort.price, cohort.currency, cohort.priceNgn)}
                           </li>
                         </>
                       ) : null}

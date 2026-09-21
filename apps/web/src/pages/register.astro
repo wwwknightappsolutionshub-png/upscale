@@ -1,8 +1,8 @@
 ---
 import Horizon from "../layouts/Horizon.astro";
 import WavingPalmIllustration from "../components/WavingPalmIllustration.astro";
-import { COUNTRIES, COURSE_SLUGS, DEFAULT_COUNTRY, formatMoney, motivationLabel, NIGERIA_STATE_NAMES, NIGERIA_STATES } from "@upscale/shared";
-import { courseOf, getCatalog, apiUrl } from "../lib/catalog";
+import { COUNTRIES, COURSE_SLUGS, DEFAULT_COUNTRY, formatFeeLabel, motivationLabel, NIGERIA_STATE_NAMES, NIGERIA_STATES } from "@upscale/shared";
+import { courseOf, getCatalog, nextCohort, apiUrl } from "../lib/catalog";
 
 const catalog = await getCatalog();
 const pre = Astro.url.searchParams.get("course") || "";
@@ -11,16 +11,17 @@ const course = courseOf(catalog, selected);
 
 const courseFees = Object.fromEntries(
   catalog.courses.map((c) => {
-    const cohort = catalog.cohorts.find((co) => co.courseSlug === c.slug);
+    const cohort = nextCohort(catalog, c.slug);
     const price = cohort?.price ?? c.price;
     const currency = cohort?.currency ?? c.currency;
-    return [c.slug, { label: formatMoney(price, currency), price, currency }];
+    const priceNgn = cohort?.priceNgn ?? null;
+    return [c.slug, { label: formatFeeLabel(price, currency, priceNgn), price, currency, priceNgn }];
   }),
 );
 ---
 <Horizon
   title="Register · UPSCALE"
-  description="Reserve a seat on an UPSCALE cohort in Nigeria. Pay by bank transfer and upload your receipt on this page."
+  description="Reserve a seat on an UPSCALE cohort. Pay by bank transfer and upload your receipt on this page."
   noindex={true}
   activeSlug={course?.slug}
 >
@@ -112,7 +113,7 @@ const courseFees = Object.fromEntries(
         I agree that UPSCALE stores my details and payment evidence to run this cohort, as described in the <a href="/privacy">privacy note</a>.
         <span class="field-error" data-for="consent" hidden></span>
       </label>
-      <button type="submit" id="register-submit">Send registration</button>
+      <button type="submit" id="register-submit">Submit Registration</button>
       <p class="note field-error" id="form-error" hidden></p>
     </form>
 
@@ -152,6 +153,22 @@ const courseFees = Object.fromEntries(
     </section>
   </div>
 
+  <div class="register-modal" id="status-modal" hidden role="dialog" aria-modal="true" aria-labelledby="status-modal-title" aria-hidden="true">
+    <div class="register-modal__panel" id="status-modal-panel">
+      <div class="register-modal__busy" id="status-busy" hidden>
+        <span class="register-spinner" aria-hidden="true"></span>
+        <h2 id="status-modal-title">Submitting registration</h2>
+        <p id="status-busy-copy">Please wait while we save your details…</p>
+      </div>
+      <div class="register-modal__result" id="status-result" hidden>
+        <p class="register-modal__badge" id="status-badge" aria-hidden="true"></p>
+        <h2 id="status-result-title">Registration status</h2>
+        <p id="status-result-copy"></p>
+        <button type="button" class="btn" id="status-modal-ok">OK</button>
+      </div>
+    </div>
+  </div>
+
   <div class="register-modal" id="upload-modal" hidden role="dialog" aria-modal="true" aria-labelledby="upload-modal-title" aria-hidden="true">
     <div class="register-modal__panel">
       <h2 id="upload-modal-title">Now upload your payment attachment</h2>
@@ -171,6 +188,14 @@ const courseFees = Object.fromEntries(
   const uploadForm = document.getElementById("upload-form");
   const uploadModal = document.getElementById("upload-modal");
   const modalOk = document.getElementById("modal-ok");
+  const statusModal = document.getElementById("status-modal");
+  const statusPanel = document.getElementById("status-modal-panel");
+  const statusBusy = document.getElementById("status-busy");
+  const statusResult = document.getElementById("status-result");
+  const statusBadge = document.getElementById("status-badge");
+  const statusResultTitle = document.getElementById("status-result-title");
+  const statusResultCopy = document.getElementById("status-result-copy");
+  const statusModalOk = document.getElementById("status-modal-ok");
   const formError = document.getElementById("form-error");
   const uploadError = document.getElementById("upload-error");
   const countrySelect = document.getElementById("country-select");
@@ -184,6 +209,8 @@ const courseFees = Object.fromEntries(
 
   let uploadToken = "";
   let countdownTimer = null;
+  let pendingPaymentJson = null;
+  let statusMode = "idle";
 
   function isNigeria(country) {
     return String(country || "").trim().toLowerCase() === "nigeria";
@@ -221,6 +248,59 @@ const courseFees = Object.fromEntries(
   function hideModal() {
     uploadModal.hidden = true;
     uploadModal.setAttribute("aria-hidden", "true");
+  }
+
+  function openStatusModal() {
+    statusModal.hidden = false;
+    statusModal.setAttribute("aria-hidden", "false");
+    document.body.style.overflow = "hidden";
+  }
+
+  function closeStatusModal() {
+    statusModal.hidden = true;
+    statusModal.setAttribute("aria-hidden", "true");
+    document.body.style.overflow = "";
+    statusMode = "idle";
+    statusBusy.hidden = true;
+    statusResult.hidden = true;
+    statusPanel?.classList.remove("is-ok", "is-err", "is-busy");
+  }
+
+  function showBusyDialog() {
+    statusMode = "busy";
+    statusBusy.hidden = false;
+    statusResult.hidden = true;
+    statusPanel?.classList.remove("is-ok", "is-err");
+    statusPanel?.classList.add("is-busy");
+    openStatusModal();
+  }
+
+  function showResultDialog(kind, title, message, okLabel) {
+    statusMode = kind;
+    statusBusy.hidden = true;
+    statusResult.hidden = false;
+    statusPanel?.classList.remove("is-busy", "is-ok", "is-err");
+    statusPanel?.classList.add(kind === "ok" ? "is-ok" : "is-err");
+    if (statusBadge) statusBadge.textContent = kind === "ok" ? "Success" : "Error";
+    if (statusResultTitle) statusResultTitle.textContent = title;
+    if (statusResultCopy) statusResultCopy.textContent = message;
+    if (statusModalOk) statusModalOk.textContent = okLabel || "OK";
+    openStatusModal();
+    statusModalOk?.focus();
+  }
+
+  function continueToPayment() {
+    if (!pendingPaymentJson) return;
+    const json = pendingPaymentJson;
+    pendingPaymentJson = null;
+    closeStatusModal();
+    registerIntro.hidden = true;
+    registerRule.hidden = true;
+    form.hidden = true;
+    stepPayment.hidden = false;
+    renderPayment(json);
+    startCountdown();
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   function clearFieldErrors() {
@@ -276,6 +356,35 @@ const courseFees = Object.fromEntries(
     if (e.target === uploadModal) hideModal();
   });
 
+  statusModalOk?.addEventListener("click", () => {
+    if (statusMode === "ok") {
+      continueToPayment();
+      return;
+    }
+    closeStatusModal();
+  });
+
+  statusModal?.addEventListener("click", (e) => {
+    if (e.target !== statusModal) return;
+    if (statusMode === "busy") return;
+    if (statusMode === "ok") {
+      continueToPayment();
+      return;
+    }
+    closeStatusModal();
+  });
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key !== "Escape") return;
+    if (!statusModal || statusModal.hidden) return;
+    if (statusMode === "busy") return;
+    if (statusMode === "ok") {
+      continueToPayment();
+      return;
+    }
+    closeStatusModal();
+  });
+
   function startCountdown() {
     let left = 30;
     countdownEl.textContent = String(left);
@@ -292,15 +401,24 @@ const courseFees = Object.fromEntries(
     }, 1000);
   }
 
+  function escHtml(value) {
+    return String(value ?? "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+  }
+
   function renderPayment(json) {
     payFacts.innerHTML = `
-      <div><dt>Course</dt><dd>${json.course}</dd></div>
-      <div><dt>Amount</dt><dd>${json.amount}</dd></div>
-      <div><dt>Reference</dt><dd><code>${json.referenceCode}</code></dd></div>
-      <div><dt>Bank</dt><dd>${json.bank.bankName}</dd></div>
-      <div><dt>Account name</dt><dd>${json.bank.accountName}</dd></div>
-      <div><dt>Account number</dt><dd>${json.bank.accountNumber}</dd></div>
-      <div><dt>Instructions</dt><dd>${json.bank.instructions}</dd></div>
+      <div><dt>Course</dt><dd>${escHtml(json.course)}</dd></div>
+      <div><dt>Amount</dt><dd>${escHtml(json.amount)}</dd></div>
+      <div><dt>Reference</dt><dd><code>${escHtml(json.referenceCode)}</code></dd></div>
+      <div><dt>Bank</dt><dd>${escHtml(json.bank.bankName)}</dd></div>
+      <div><dt>Account name</dt><dd>${escHtml(json.bank.accountName)}</dd></div>
+      <div><dt>Account number</dt><dd>${escHtml(json.bank.accountNumber)}</dd></div>
+      <div><dt>Instructions</dt><dd>${escHtml(json.bank.instructions)}</dd></div>
     `;
   }
 
@@ -315,25 +433,34 @@ const courseFees = Object.fromEntries(
     }
     const submitBtn = document.getElementById("register-submit");
     submitBtn.disabled = true;
+    showBusyDialog();
     try {
       const res = await fetch(`${api}/public/register`, { method: "POST", body: data });
-      const json = await res.json();
+      const json = await res.json().catch(() => ({}));
       if (!res.ok) {
+        const message = json.error || "Could not register.";
         formError.hidden = false;
-        formError.textContent = json.error || "Could not register.";
+        formError.textContent = message;
         const fields = json.details?.fieldErrors || {};
         for (const [key, msgs] of Object.entries(fields)) {
           if (msgs?.[0]) showFieldError(key, msgs[0]);
         }
+        showResultDialog("err", "Registration failed", message, "Try again");
         return;
       }
       uploadToken = json.uploadToken;
-      registerIntro.hidden = true;
-      registerRule.hidden = true;
-      form.hidden = true;
-      stepPayment.hidden = false;
-      renderPayment(json);
-      startCountdown();
+      pendingPaymentJson = json;
+      showResultDialog(
+        "ok",
+        "Registration submitted",
+        "Your details were saved. Continue to view payment details and upload your transfer receipt.",
+        "Continue to payment",
+      );
+    } catch {
+      const message = "Network error. Check your connection and try again.";
+      formError.hidden = false;
+      formError.textContent = message;
+      showResultDialog("err", "Registration failed", message, "Try again");
     } finally {
       submitBtn.disabled = false;
     }

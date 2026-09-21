@@ -43,6 +43,7 @@ export async function loadCatalog(): Promise<Catalog> {
       ...parsedSettings,
       whatsapp: parsedSettings.whatsapp || defaults.whatsapp,
       bank: { ...defaults.bank, ...(parsedSettings.bank || {}) },
+      bankUsd: { ...defaults.bankUsd, ...(parsedSettings.bankUsd || {}) },
       proof: Array.isArray(parsedSettings.proof) && parsedSettings.proof.length ? parsedSettings.proof : defaults.proof,
       faqs: Array.isArray(parsedSettings.faqs) && parsedSettings.faqs.length ? parsedSettings.faqs : defaults.faqs,
       waysInTitle: String(parsedSettings.waysInTitle || defaults.waysInTitle).trim() || defaults.waysInTitle,
@@ -63,6 +64,7 @@ export async function loadCatalog(): Promise<Catalog> {
       seatsTaken: c.seatsTaken,
       price: c.price,
       currency: c.currency,
+      priceNgn: c.priceNgn && c.priceNgn > 0 ? c.priceNgn : null,
     })),
   };
 }

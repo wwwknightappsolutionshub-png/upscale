@@ -2,7 +2,7 @@ import { readFile } from "node:fs/promises";
 import { desc, eq } from "drizzle-orm";
 import { Hono } from "hono";
 import type { CourseSlug, LandingSettings, WaysInItem, WeekBlock } from "@upscale/shared";
-import { WAYS_IN_MARKS } from "@upscale/shared";
+import { formatFeeLabel, formatMoney, isNigeria, WAYS_IN_MARKS } from "@upscale/shared";
 import { seedCatalog } from "@upscale/shared/seed";
 import { db } from "../db/client.ts";
 import {
@@ -17,7 +17,7 @@ import {
 } from "../db/schema.ts";
 import { createSession, currentAdmin, destroySession, requireAdmin } from "../lib/auth.ts";
 import { audit, loadCatalog } from "../lib/catalog.ts";
-import { nowIso } from "../lib/ids.ts";
+import { nid, nowIso } from "../lib/ids.ts";
 import { sendMail } from "../lib/mail.ts";
 import { verifyPassword } from "../lib/password.ts";
 import { safeJoinUpload, saveInstructorPhoto, mimeFromUploadKey } from "../lib/storage.ts";
@@ -158,7 +158,7 @@ adminRoutes.get("/", async (c) => {
                     <td>${esc(course?.name || co.courseSlug)}</td>
                     <td>${esc(co.startDate)}</td>
                     <td>${co.seatsTaken} / ${co.seatCap}</td>
-                    <td>${co.currency} ${co.price}</td>
+                    <td>${esc(formatFeeLabel(co.price, co.currency, co.priceNgn))}</td>
                   </tr>`;
                 })
                 .join("")}
@@ -285,7 +285,7 @@ adminRoutes.get("/accounts", async (c) => {
               const cohort = catalog.cohorts.find((x) => x.id === s.cohortId);
               const files = byStudent.get(s.id) || [];
               const latest = files.sort((a, b) => b.submittedAt.localeCompare(a.submittedAt))[0];
-              const amount = cohort ? `${cohort.currency} ${cohort.price}` : "—";
+              const amount = cohort ? formatFeeLabel(cohort.price, cohort.currency, cohort.priceNgn) : "—";
               const attachment = latest
                 ? `<a href="/admin/evidence/${latest.id}/file" target="_blank" rel="noopener">${esc(latest.mime)} · ${Math.round(latest.size / 1024)} KB</a>`
                 : `<span class="sub">No attachment</span>`;
@@ -349,6 +349,7 @@ adminRoutes.get("/students/:id", async (c) => {
 
 adminRoutes.get("/evidence", async (c) => {
   const admin = c.get("admin");
+  const catalog = await loadCatalog();
   const pending = await db.select().from(paymentEvidence).where(eq(paymentEvidence.status, "pending")).orderBy(desc(paymentEvidence.submittedAt));
   const studentRows = await db.select().from(students);
   const byId = Object.fromEntries(studentRows.map((s) => [s.id, s]));
@@ -358,12 +359,21 @@ adminRoutes.get("/evidence", async (c) => {
       ${pending
         .map((f) => {
           const s = byId[f.studentId];
+          const cohort = catalog.cohorts.find((x) => x.id === s?.cohortId);
+          const expected = cohort
+            ? formatFeeLabel(cohort.price, cohort.currency, cohort.priceNgn)
+            : "—";
+          const claimedCurrency =
+            s && isNigeria(s.country) && cohort?.priceNgn && cohort.priceNgn > 0
+              ? "NGN"
+              : cohort?.currency || "USD";
+          const claimed = formatMoney(f.amount, claimedCurrency);
           return `<article class="evidence-card">
             <header>
               <strong>${esc(s?.name || "Unknown")}</strong>
               <code>${esc(s?.referenceCode || "")}</code>
             </header>
-            <p>${esc(s?.email || "")} · claimed ${f.amount} · ${esc(f.method)}</p>
+            <p>${esc(s?.email || "")} · ${esc(s?.country || "")} · expected ${esc(expected)} · claimed ${esc(claimed)} · ${esc(f.method)}</p>
             <p><a href="/admin/evidence/${f.id}/file" target="_blank" rel="noopener">Open receipt</a></p>
             <form method="post" action="/admin/evidence/${f.id}/approve" class="inline">
               <button type="submit">Approve &amp; enrol</button>
@@ -668,7 +678,9 @@ adminRoutes.get("/cohorts", async (c) => {
               <label>Seat cap<input type="number" name="seatCap" value="${co.seatCap}" required /></label>
               <label>Price<input type="number" name="price" value="${co.price}" required /></label>
               <label>Currency<input name="currency" value="${esc(co.currency)}" required /></label>
+              <label>NGN equivalent<input type="number" name="priceNgn" min="0" step="1" value="${co.priceNgn ?? ""}" placeholder="Optional" /></label>
             </div>
+            <p class="note">NGN equivalent is shown next to the USD fee on registration and payment (e.g. $450 · ₦675,000). Leave blank to hide.</p>
             <p class="sub">Seats taken: ${co.seatsTaken} (not edited here)</p>
             ${formActions("Save cohort")}
           </form>`;
@@ -683,6 +695,8 @@ adminRoutes.post("/cohorts/:id", async (c) => {
   const admin = c.get("admin");
   if (!canManageSiteContent(roleOf(admin))) return forbid(c, admin, "Only admins can manage cohorts.");
   const body = await c.req.parseBody();
+  const rawNgn = String(body.priceNgn ?? "").trim();
+  const priceNgn = rawNgn === "" ? 0 : Math.max(0, Math.round(Number(rawNgn)));
   await db
     .update(cohorts)
     .set({
@@ -694,6 +708,7 @@ adminRoutes.post("/cohorts/:id", async (c) => {
       seatCap: Number(body.seatCap),
       price: Number(body.price),
       currency: String(body.currency),
+      priceNgn: Number.isFinite(priceNgn) ? priceNgn : 0,
     })
     .where(eq(cohorts.id, c.req.param("id")));
   await audit(admin.email, "cohort_update", "cohort", c.req.param("id"));
@@ -748,13 +763,23 @@ adminRoutes.get("/landing", async (c) => {
           <a href="/admin/courses">Courses</a> and <a href="/admin/cohorts">Cohorts</a>.</p>
         <label>Section title<input name="tracksTitle" value="${esc(s.tracksTitle)}" required maxlength="60" /></label>
 
-        <h2>Bank</h2>
+        <h2>NGN bank details</h2>
+        <p class="note">Shown to registrants whose country is Nigeria.</p>
         <div class="form-grid">
           <label>Bank name<input name="bankName" value="${esc(s.bank.bankName)}" required /></label>
           <label>Account name<input name="accountName" value="${esc(s.bank.accountName)}" required /></label>
           <label>Account number<input name="accountNumber" value="${esc(s.bank.accountNumber)}" required /></label>
         </div>
         <label class="full">Instructions<textarea name="instructions" rows="4">${esc(s.bank.instructions)}</textarea></label>
+
+        <h2>USD bank details</h2>
+        <p class="note">Shown to registrants whose country is not Nigeria. Leave blank to keep using NGN bank details until configured.</p>
+        <div class="form-grid">
+          <label>Bank name<input name="bankUsdName" value="${esc(s.bankUsd.bankName)}" /></label>
+          <label>Account name<input name="bankUsdAccountName" value="${esc(s.bankUsd.accountName)}" /></label>
+          <label>Account number<input name="bankUsdAccountNumber" value="${esc(s.bankUsd.accountNumber)}" /></label>
+        </div>
+        <label class="full">Instructions<textarea name="bankUsdInstructions" rows="4">${esc(s.bankUsd.instructions)}</textarea></label>
         <h2>FAQs (JSON)</h2>
         <label class="full"><textarea name="faqs" rows="14" required>${esc(JSON.stringify(s.faqs, null, 2))}</textarea></label>
         <h2>Proof stats (JSON)</h2>
@@ -810,6 +835,12 @@ adminRoutes.post("/landing", async (c) => {
       accountName: String(body.accountName),
       accountNumber: String(body.accountNumber),
       instructions: String(body.instructions),
+    },
+    bankUsd: {
+      bankName: String(body.bankUsdName || "").trim(),
+      accountName: String(body.bankUsdAccountName || "").trim(),
+      accountNumber: String(body.bankUsdAccountNumber || "").trim(),
+      instructions: String(body.bankUsdInstructions || "").trim(),
     },
     faqs,
     proof,

@@ -1174,6 +1174,7 @@ img.avatar {
   z-index: 100;
   padding: 1rem;
 }
+.register-modal[hidden] { display: none !important; }
 .register-modal__panel {
   background: #fff;
   border: var(--seam) solid var(--ink);
@@ -1183,6 +1184,46 @@ img.avatar {
 }
 .register-modal__panel h2 { margin: 0 0 0.5rem; font-size: 1.2rem; }
 .register-modal__panel p { color: var(--muted); margin: 0 0 1rem; }
+.register-modal__busy,
+.register-modal__result {
+  text-align: center;
+}
+.register-modal__busy {
+  display: grid;
+  justify-items: center;
+  gap: 0.35rem;
+}
+.register-modal__busy p,
+.register-modal__result p { margin-bottom: 0.85rem; }
+.register-modal__badge {
+  display: inline-block;
+  margin: 0 0 0.55rem !important;
+  padding: 0.2rem 0.55rem;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  border: 1px solid currentColor;
+}
+.register-modal__panel.is-ok .register-modal__badge { color: var(--blue-ink); }
+.register-modal__panel.is-err .register-modal__badge { color: var(--red-ink); }
+.register-modal__panel.is-ok h2 { color: var(--blue-ink); }
+.register-modal__panel.is-err h2 { color: var(--red-ink); }
+.register-spinner {
+  width: 2.1rem;
+  height: 2.1rem;
+  margin-bottom: 0.55rem;
+  border: 3px solid rgba(17, 17, 17, 0.12);
+  border-top-color: var(--blue);
+  border-radius: 50%;
+  animation: register-spin 0.75s linear infinite;
+}
+@keyframes register-spin {
+  to { transform: rotate(360deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .register-spinner { animation: none; border-top-color: var(--ink); }
+}
 
 .pay-grid {
   display: grid;
