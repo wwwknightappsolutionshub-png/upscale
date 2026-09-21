@@ -14,7 +14,7 @@ import { db } from "../db/client.ts";
 import { cohorts, paymentEvidence, students } from "../db/schema.ts";
 import { audit, courseBySlug, loadCatalog, nextCohort } from "../lib/catalog.ts";
 import { nid, newToken, nowIso } from "../lib/ids.ts";
-import { buildRegistrationEmail } from "../lib/email-templates.ts";
+import { buildEvidenceReceivedEmail, buildRegistrationEmail } from "../lib/email-templates.ts";
 import { sendMailSafe } from "../lib/mail.ts";
 import { sha256 } from "../lib/password.ts";
 import { rateLimit } from "../lib/rate-limit.ts";
@@ -275,10 +275,20 @@ publicRoutes.post("/evidence", async (c) => {
       subject: `Payment evidence ${student.referenceCode}`,
       text: `${student.name} uploaded evidence for ${student.referenceCode}. Review it in admin.`,
     });
+    const course = courseBySlug(catalog, student.courseSlug);
+    const evidenceMail = await buildEvidenceReceivedEmail({
+      name: student.name,
+      email: student.email,
+      courseName: course?.name || student.courseSlug,
+      referenceCode: student.referenceCode,
+      supportEmail: catalog.settings.email,
+    });
     await sendMailSafe({
       to: student.email,
-      subject: `We have your UPSCALE receipt ${student.referenceCode}`,
-      text: `Hello ${student.name},\n\nYour payment evidence is in the review queue. We will email you when it is approved or if we need another file.\n\nUPSCALE`,
+      replyTo: catalog.settings.email,
+      subject: evidenceMail.subject,
+      text: evidenceMail.text,
+      html: evidenceMail.html,
     });
 
     return c.json({ ok: true, status: "evidence_submitted" });

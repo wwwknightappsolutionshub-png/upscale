@@ -17,9 +17,17 @@ import {
 } from "../db/schema.ts";
 import { createSession, currentAdmin, destroySession, requireAdmin } from "../lib/auth.ts";
 import { audit, loadCatalog, nextCohort } from "../lib/catalog.ts";
-import { nid, nowIso } from "../lib/ids.ts";
+import { nid, nowIso, newToken } from "../lib/ids.ts";
 import { describeMailTransport, sendMail, sendMailSafe } from "../lib/mail.ts";
-import { verifyPassword } from "../lib/password.ts";
+import {
+  buildEnrolledEmail,
+  buildRejectedEmail,
+  buildWaitlistEmail,
+  loadEmailTemplates,
+  renderEmail,
+  saveEmailTemplate,
+} from "../lib/email-templates.ts";
+import { hashPassword, sha256, verifyPassword } from "../lib/password.ts";
 import { safeJoinUpload, saveInstructorPhoto, mimeFromUploadKey } from "../lib/storage.ts";
 import { adminCss } from "../admin/styles.ts";
 import { registrationEmailEditorPage } from "../admin/emails-page.ts";
@@ -36,8 +44,6 @@ import {
   normalizeAdminRole,
   type AdminRole,
 } from "../lib/roles.ts";
-import { hashPassword } from "../lib/password.ts";
-import { loadEmailTemplates, renderEmail, saveEmailTemplate } from "../lib/email-templates.ts";
 import { sampleRegistrationVars } from "@upscale/shared/email-templates";
 import { publishSite } from "../lib/publish-site.ts";
 
@@ -421,14 +427,44 @@ adminRoutes.post("/evidence/:id/approve", async (c) => {
   await audit(admin.email, "evidence_approve", "student", student.id, { nextStatus });
   const catalog = await loadCatalog();
   const course = catalog.courses.find((x) => x.slug === student.courseSlug);
-  await sendMailSafe({
-    to: student.email,
-    subject: nextStatus === "enrolled" ? `Enrolled · ${student.referenceCode}` : `Waitlist · ${student.referenceCode}`,
-    text:
-      nextStatus === "enrolled"
-        ? `Hello ${student.name},\n\nYour payment is verified. You are enrolled in ${course?.name}. Join instructions and calendar notes will follow from ${catalog.settings.email}.\n\nUPSCALE — learn today, build tomorrow`
-        : `Hello ${student.name},\n\nYour payment is verified but this cohort is at cap. You are on the waitlist. We will write if a seat opens.\n\nUPSCALE`,
-  });
+  const courseName = course?.name || student.courseSlug;
+  const supportEmail = catalog.settings.email;
+  if (nextStatus === "enrolled") {
+    const mail = await buildEnrolledEmail({
+      name: student.name,
+      email: student.email,
+      courseName,
+      startDate: cohort?.startDate || "",
+      endDate: cohort?.endDate || "",
+      daysLabel: cohort?.daysLabel || "",
+      timeLabel: cohort?.timeLabel || "",
+      timezone: cohort?.timezone || "",
+      referenceCode: student.referenceCode,
+      supportEmail,
+    });
+    await sendMailSafe({
+      to: student.email,
+      replyTo: supportEmail,
+      subject: mail.subject,
+      text: mail.text,
+      html: mail.html,
+    });
+  } else {
+    const mail = await buildWaitlistEmail({
+      name: student.name,
+      email: student.email,
+      courseName,
+      referenceCode: student.referenceCode,
+      supportEmail,
+    });
+    await sendMailSafe({
+      to: student.email,
+      replyTo: supportEmail,
+      subject: mail.subject,
+      text: mail.text,
+      html: mail.html,
+    });
+  }
   return c.redirect("/admin/evidence");
 });
 
@@ -442,17 +478,38 @@ adminRoutes.post("/evidence/:id/reject", async (c) => {
   const ev = (await db.select().from(paymentEvidence).where(eq(paymentEvidence.id, id)).limit(1))[0];
   if (!ev) return c.text("Not found", 404);
   const student = (await db.select().from(students).where(eq(students.id, ev.studentId)).limit(1))[0];
+  if (!student) return c.text("Not found", 404);
   const ts = nowIso();
+  const token = newToken();
   await db
     .update(paymentEvidence)
     .set({ status: "rejected", reviewerId: admin.id, reviewedAt: ts, reviewNotes: reason })
     .where(eq(paymentEvidence.id, id));
-  await db.update(students).set({ status: "rejected", updatedAt: ts }).where(eq(students.id, student.id));
+  await db
+    .update(students)
+    .set({ status: "rejected", updatedAt: ts, tokenHash: sha256(token) })
+    .where(eq(students.id, student.id));
   await audit(admin.email, "evidence_reject", "student", student.id, { reason });
+
+  const catalog = await loadCatalog();
+  const course = catalog.courses.find((x) => x.slug === student.courseSlug);
+  const site = process.env.WEB_ORIGIN || "http://localhost:4321";
+  const supportEmail = catalog.settings.email;
+  const mail = await buildRejectedEmail({
+    name: student.name,
+    email: student.email,
+    courseName: course?.name || student.courseSlug,
+    referenceCode: student.referenceCode,
+    rejectReason: reason,
+    paymentUrl: `${site}/payment?token=${token}`,
+    supportEmail,
+  });
   await sendMailSafe({
     to: student.email,
-    subject: `Receipt not accepted · ${student.referenceCode}`,
-    text: `Hello ${student.name},\n\nWe could not verify that receipt.\n\n${reason}\n\nUpload a clearer file on your payment page.\n\nUPSCALE`,
+    replyTo: supportEmail,
+    subject: mail.subject,
+    text: mail.text,
+    html: mail.html,
   });
   return c.redirect("/admin/evidence");
 });
@@ -896,8 +953,12 @@ adminRoutes.get("/emails/registration", async (c) => {
       admin,
       "Emails",
       `
-      ${pageHead("Registration email", "Sent immediately when someone reserves a seat. Use merge tags for dynamic fields.")}
+      ${pageHead(
+        "Registration email",
+        "Sent when someone reserves a seat. All student emails use the UPSCALE blue/red brand bar. Do not put bank details or an upload button here — payment is on the registration page.",
+      )}
       <p class="note"><strong>Outbound mail:</strong> ${esc(mailNote)}</p>
+      <p class="note">Lifecycle: <strong>registration</strong> → <strong>evidence received</strong> (after upload) → <strong>enrolled</strong> (Approve &amp; enrol) or <strong>waitlist</strong> / <strong>rejected</strong>. Restarting the API refreshes unbranded or outdated stored templates.</p>
       ${testOk ? `<p class="banner ok">${esc(testOk)}</p>` : ""}
       ${testErr ? `<p class="err">${esc(testErr)}</p>` : ""}
       <form method="post" action="/admin/emails/test" class="stack cardish" style="margin-bottom:1rem;max-width:28rem">

@@ -1,5 +1,7 @@
 import {
   defaultEmailTemplates,
+  emailTemplateNeedsBrandRefresh,
+  registrationTemplateHasPaymentCta,
   renderEmailTemplate,
   type EmailTemplate,
   type EmailTemplateKey,
@@ -30,15 +32,61 @@ export type RegistrationEmailVars = {
   supportEmail: string;
 };
 
+export type EvidenceReceivedEmailVars = {
+  name: string;
+  email: string;
+  courseName: string;
+  referenceCode: string;
+  supportEmail: string;
+};
+
+export type EnrolledEmailVars = {
+  name: string;
+  email: string;
+  courseName: string;
+  startDate: string;
+  endDate: string;
+  daysLabel: string;
+  timeLabel: string;
+  timezone: string;
+  referenceCode: string;
+  supportEmail: string;
+};
+
+export type WaitlistEmailVars = {
+  name: string;
+  email: string;
+  courseName: string;
+  referenceCode: string;
+  supportEmail: string;
+};
+
+export type RejectedEmailVars = {
+  name: string;
+  email: string;
+  courseName: string;
+  referenceCode: string;
+  rejectReason: string;
+  paymentUrl: string;
+  supportEmail: string;
+};
+
+function mergeStore(parsed: Partial<EmailTemplatesStore> | null | undefined): EmailTemplatesStore {
+  const defaults = defaultEmailTemplates();
+  return {
+    registration: { ...defaults.registration, ...(parsed?.registration || {}) },
+    evidence_received: { ...defaults.evidence_received, ...(parsed?.evidence_received || {}) },
+    enrolled: { ...defaults.enrolled, ...(parsed?.enrolled || {}) },
+    waitlist: { ...defaults.waitlist, ...(parsed?.waitlist || {}) },
+    rejected: { ...defaults.rejected, ...(parsed?.rejected || {}) },
+  };
+}
+
 export async function loadEmailTemplates(): Promise<EmailTemplatesStore> {
   const rows = await db.select().from(settings).where(eq(settings.id, SETTINGS_ID)).limit(1);
   if (!rows[0]?.json) return defaultEmailTemplates();
   try {
-    const parsed = JSON.parse(rows[0].json) as Partial<EmailTemplatesStore>;
-    const defaults = defaultEmailTemplates();
-    return {
-      registration: { ...defaults.registration, ...parsed.registration },
-    };
+    return mergeStore(JSON.parse(rows[0].json) as Partial<EmailTemplatesStore>);
   } catch {
     return defaultEmailTemplates();
   }
@@ -56,9 +104,47 @@ export async function saveEmailTemplate(key: EmailTemplateKey, template: EmailTe
 }
 
 export async function ensureEmailTemplates() {
+  const defaults = defaultEmailTemplates();
   const rows = await db.select().from(settings).where(eq(settings.id, SETTINGS_ID)).limit(1);
   if (rows.length === 0) {
-    await db.insert(settings).values({ id: SETTINGS_ID, json: JSON.stringify(defaultEmailTemplates()) });
+    await db.insert(settings).values({ id: SETTINGS_ID, json: JSON.stringify(defaults) });
+    return;
+  }
+
+  let parsed: Partial<EmailTemplatesStore> = {};
+  try {
+    parsed = JSON.parse(rows[0]!.json) as Partial<EmailTemplatesStore>;
+  } catch {
+    await db.update(settings).set({ json: JSON.stringify(defaults) }).where(eq(settings.id, SETTINGS_ID));
+    return;
+  }
+
+  const next = mergeStore(parsed);
+  let changed = false;
+
+  if (registrationTemplateHasPaymentCta(next.registration.html, next.registration.text)) {
+    next.registration = defaults.registration;
+    changed = true;
+    console.log("[email] refreshed registration template (removed pay/upload CTA)");
+  }
+
+  const keys = Object.keys(defaults) as EmailTemplateKey[];
+  for (const key of keys) {
+    if (!parsed[key]) {
+      next[key] = defaults[key];
+      changed = true;
+      console.log(`[email] added ${key} template`);
+      continue;
+    }
+    if (emailTemplateNeedsBrandRefresh(next[key].html)) {
+      next[key] = defaults[key];
+      changed = true;
+      console.log(`[email] refreshed ${key} template (brand palette)`);
+    }
+  }
+
+  if (changed) {
+    await db.update(settings).set({ json: JSON.stringify(next) }).where(eq(settings.id, SETTINGS_ID));
   }
 }
 
@@ -94,4 +180,24 @@ export function htmlToText(html: string) {
 export async function buildRegistrationEmail(vars: RegistrationEmailVars) {
   const templates = await loadEmailTemplates();
   return renderEmail(templates.registration, vars);
+}
+
+export async function buildEvidenceReceivedEmail(vars: EvidenceReceivedEmailVars) {
+  const templates = await loadEmailTemplates();
+  return renderEmail(templates.evidence_received, vars);
+}
+
+export async function buildEnrolledEmail(vars: EnrolledEmailVars) {
+  const templates = await loadEmailTemplates();
+  return renderEmail(templates.enrolled, vars);
+}
+
+export async function buildWaitlistEmail(vars: WaitlistEmailVars) {
+  const templates = await loadEmailTemplates();
+  return renderEmail(templates.waitlist, vars);
+}
+
+export async function buildRejectedEmail(vars: RejectedEmailVars) {
+  const templates = await loadEmailTemplates();
+  return renderEmail(templates.rejected, vars);
 }
