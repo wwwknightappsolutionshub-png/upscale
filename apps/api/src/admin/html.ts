@@ -28,14 +28,22 @@ export const adminCss = /* css */ `
   --paper: #f7f5f2;
   --white: #ffffff;
   --side: 15rem;
+  --radius: 4px;
 }
 * { box-sizing: border-box; }
-html, body { margin: 0; overflow-x: hidden; }
+html {
+  margin: 0;
+  overflow-x: clip;
+  max-width: 100%;
+}
 body {
+  margin: 0;
   font-family: "Anek Sans", sans-serif;
   background: var(--paper);
   color: var(--ink);
   min-height: 100vh;
+  max-width: 100%;
+  overflow-x: clip;
 }
 a { color: var(--blue); }
 code {
@@ -43,11 +51,15 @@ code {
   background: #f0ede8;
   padding: 0.12rem 0.35rem;
   border-radius: 2px;
+  word-break: break-word;
 }
 .shell {
   display: grid;
   grid-template-columns: var(--side) minmax(0, 1fr);
   min-height: 100vh;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: clip;
 }
 .side {
   background: var(--ink);
@@ -97,10 +109,11 @@ code {
   font-weight: 700;
 }
 main.pad {
-  padding: 2rem 2.4rem 4rem;
-  max-width: 72rem;
+  padding: 2rem clamp(1rem, 3vw, 2.4rem) 4rem;
+  max-width: min(72rem, 100%);
   width: 100%;
   min-width: 0;
+  overflow-x: clip;
 }
 .page-head { margin-bottom: 1.5rem; }
 .page-head .kicker {
@@ -126,11 +139,13 @@ main.pad {
 }
 .stats {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(8.5rem, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 8.5rem), 1fr));
   gap: 0.75rem;
   margin-bottom: 1.5rem;
   padding: 0;
   list-style: none;
+  width: 100%;
+  min-width: 0;
 }
 .stats li {
   background: var(--white);
@@ -153,6 +168,8 @@ main.pad {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 1.25rem;
+  width: 100%;
+  min-width: 0;
 }
 .panel {
   background: var(--white);
@@ -160,6 +177,8 @@ main.pad {
   padding: 1rem 1.1rem 1.1rem;
   overflow-x: auto;
   max-width: 100%;
+  min-width: 0;
+  width: 100%;
 }
 .panel h2 {
   font-weight: 800;
@@ -167,11 +186,17 @@ main.pad {
   margin: 0 0 0.85rem;
   letter-spacing: -0.02em;
 }
-.table-wrap { overflow-x: auto; }
+.table-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  max-width: 100%;
+  min-width: 0;
+}
 table {
   width: 100%;
   border-collapse: collapse;
   background: var(--white);
+  min-width: 0;
 }
 .panel table { background: transparent; }
 th, td {
@@ -179,6 +204,8 @@ th, td {
   padding: 0.65rem 0.75rem;
   border-bottom: 1px solid var(--line);
   vertical-align: top;
+  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 th {
   font-size: 0.72rem;
@@ -226,6 +253,8 @@ form.stack, .stack {
   display: flex;
   flex-direction: column;
   gap: 0.85rem;
+  min-width: 0;
+  max-width: 100%;
 }
 label {
   display: flex;
@@ -277,11 +306,15 @@ button.ghost:hover {
   background: var(--white);
   padding: 1.15rem;
   border: 1px solid var(--line);
+  max-width: 100%;
+  min-width: 0;
 }
 .instructor-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
   gap: 1rem;
+  width: 100%;
+  min-width: 0;
 }
 .instructor-card h2 {
   margin: 0 0 0.15rem;
@@ -309,11 +342,13 @@ button.ghost:hover {
 .instructor-card .avatar.red { background: var(--red); }
 .course-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr));
   gap: 0.85rem;
   padding: 0;
   list-style: none;
   margin: 0;
+  width: 100%;
+  min-width: 0;
 }
 .course-grid a {
   display: block;
@@ -331,8 +366,10 @@ button.ghost:hover {
 }
 .cohort-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
   gap: 1rem;
+  width: 100%;
+  min-width: 0;
 }
 .cohort-grid h2 {
   margin: 0 0 0.15rem;
@@ -348,7 +385,10 @@ button.ghost:hover {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0.75rem;
+  width: 100%;
+  min-width: 0;
 }
+.form-grid > * { min-width: 0; }
 .form-grid .full { grid-column: 1 / -1; }
 fieldset.ways-card {
   border: 1px solid var(--line);
@@ -508,14 +548,17 @@ fieldset.ways-card legend {
 }
 .panel h3 { margin: 0 0 0.35rem; font-size: 0.95rem; }
 .hint { color: var(--muted); font-size: 0.82rem; margin: 0.25rem 0 0; line-height: 1.4; }
+.email-editor { max-width: 100%; min-width: 0; }
 .email-editor .stack { gap: 1.1rem; }
 .email-editor-split {
   display: grid;
-  grid-template-columns: 1fr 16rem;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 16rem);
   gap: 1rem;
   align-items: start;
+  width: 100%;
+  min-width: 0;
 }
-.email-html-source { min-height: 520px; font-family: ui-monospace, monospace; font-size: 12px; }
+.email-html-source { min-height: 520px; font-family: ui-monospace, monospace; font-size: 12px; width: 100%; max-width: 100%; }
 .email-side {
   background: var(--paper);
   border: 1px solid var(--line);
@@ -555,8 +598,21 @@ fieldset.ways-card legend {
 .email-preview-wrap { background: #f5f0e8; padding: 1.5rem; border: 1px solid var(--line); border-radius: var(--radius); }
 .email-preview-meta { margin-bottom: 1rem; font-size: 0.9rem; color: var(--muted); }
 .email-preview-frame { width: 100%; min-height: 640px; border: 1px solid var(--line); background: #fff; }
-.tox-tinymce { border-radius: var(--radius) !important; border-color: var(--line) !important; }
-.outline-editor { display: grid; gap: 1rem; }
+.tox-tinymce {
+  border-radius: var(--radius, 4px) !important;
+  border-color: var(--line) !important;
+  max-width: 100% !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+.tox .tox-editor-header,
+.tox .tox-toolbar-overlord,
+.tox .tox-toolbar__primary {
+  max-width: 100% !important;
+  overflow-x: auto !important;
+}
+.tox-tinymce-aux { max-width: 100vw; }
+.outline-editor { display: grid; gap: 1rem; max-width: 100%; min-width: 0; }
 .outline-editor-head {
   display: flex;
   justify-content: space-between;
@@ -582,13 +638,26 @@ fieldset.ways-card legend {
   gap: 0.45rem;
 }
 .outline-week-num { width: 4.5rem; }
-@media (max-width: 960px) {
+/* Mid widths: keep sidebar, but stack dense layouts so content never clips. */
+@media (max-width: 1200px) {
+  .split { grid-template-columns: 1fr; }
   .email-editor-split { grid-template-columns: 1fr; }
   .email-side { position: static; }
+  .instructor-grid,
+  .cohort-grid {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr));
+  }
 }
-@media (max-width: 900px) {
+@media (max-width: 1100px) {
+  .form-grid { grid-template-columns: 1fr; }
+  .form-grid .full { grid-column: auto; }
+  .facts { grid-template-columns: 1fr; }
+  .stats { grid-template-columns: repeat(auto-fit, minmax(min(100%, 7.5rem), 1fr)); }
+}
+/* Drawer nav — sidebar + forms need full width below this. */
+@media (max-width: 980px) {
   .topbar { display: flex; }
-  .shell { grid-template-columns: 1fr; }
+  .shell { grid-template-columns: minmax(0, 1fr); }
   .side {
     position: fixed;
     top: 0;
@@ -641,8 +710,9 @@ fieldset.ways-card legend {
   button, .ghost { max-width: 100%; }
   .evidence-card header { flex-direction: column; }
   .login form { padding: 1.35rem 1.15rem; width: min(24rem, 94vw); }
+  .reject input { min-width: 0; width: 100%; }
 }
-@media (min-width: 901px) {
+@media (min-width: 981px) {
   body.nav-open .side-scrim { display: none; }
 }
 `;
@@ -711,7 +781,7 @@ export function layout(title: string, who: string, body: string, active = "/admi
     (function () {
       var toggle = document.getElementById("nav-toggle");
       var scrim = document.getElementById("side-scrim");
-      var desktop = window.matchMedia("(min-width: 901px)");
+      var desktop = window.matchMedia("(min-width: 981px)");
       function setOpen(open) {
         if (desktop.matches) {
           document.body.classList.remove("nav-open");
