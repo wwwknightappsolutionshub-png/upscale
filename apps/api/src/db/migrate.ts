@@ -106,39 +106,39 @@ CREATE TABLE IF NOT EXISTS audit_logs (
 );
 `;
 
+async function tableColumns(table: string): Promise<Set<string>> {
+  const result = await client.execute(`PRAGMA table_info(${table})`);
+  const names = result.rows.map((row) => {
+    const record = row as Record<string, unknown>;
+    return String(record.name ?? record["1"] ?? "");
+  });
+  return new Set(names.filter(Boolean));
+}
+
+async function addColumnIfMissing(table: string, column: string, ddl: string) {
+  const cols = await tableColumns(table);
+  if (cols.has(column)) return;
+  await client.execute(`ALTER TABLE ${table} ADD COLUMN ${ddl}`);
+  console.log(`[schema] added ${table}.${column}`);
+}
+
 export async function ensureSchema() {
   for (const raw of statements.split(";")) {
     const sql = raw.trim();
     if (sql) await client.execute(sql);
   }
-  try {
-    await client.execute("ALTER TABLE students ADD COLUMN state TEXT NOT NULL DEFAULT ''");
-  } catch {
-    /* column exists */
-  }
-  try {
-    await client.execute("ALTER TABLE students ADD COLUMN country TEXT NOT NULL DEFAULT ''");
-  } catch {
-    /* column exists */
-  }
+
+  // Additive columns for DBs created before these fields existed.
+  // CREATE TABLE IF NOT EXISTS does not upgrade existing tables.
+  await addColumnIfMissing("students", "state", "state TEXT NOT NULL DEFAULT ''");
+  await addColumnIfMissing("students", "country", "country TEXT NOT NULL DEFAULT ''");
+  await addColumnIfMissing("admin_users", "role", "role TEXT NOT NULL DEFAULT 'super_admin'");
+  await addColumnIfMissing("instructors", "photo_key", "photo_key TEXT NOT NULL DEFAULT ''");
+  await addColumnIfMissing("cohorts", "price_ngn", "price_ngn INTEGER NOT NULL DEFAULT 0");
+
   try {
     await client.execute("CREATE UNIQUE INDEX IF NOT EXISTS students_phone_cohort ON students (phone, cohort_id)");
   } catch {
-    /* index exists */
-  }
-  try {
-    await client.execute("ALTER TABLE admin_users ADD COLUMN role TEXT NOT NULL DEFAULT 'super_admin'");
-  } catch {
-    /* column exists */
-  }
-  try {
-    await client.execute("ALTER TABLE instructors ADD COLUMN photo_key TEXT NOT NULL DEFAULT ''");
-  } catch {
-    /* column exists */
-  }
-  try {
-    await client.execute("ALTER TABLE cohorts ADD COLUMN price_ngn INTEGER NOT NULL DEFAULT 0");
-  } catch {
-    /* column exists */
+    /* index exists or duplicate phones block it */
   }
 }

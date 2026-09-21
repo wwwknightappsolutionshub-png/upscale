@@ -15,7 +15,7 @@ import { cohorts, paymentEvidence, students } from "../db/schema.ts";
 import { audit, courseBySlug, loadCatalog, nextCohort } from "../lib/catalog.ts";
 import { nid, newToken, nowIso } from "../lib/ids.ts";
 import { buildRegistrationEmail } from "../lib/email-templates.ts";
-import { sendMail } from "../lib/mail.ts";
+import { sendMailSafe } from "../lib/mail.ts";
 import { sha256 } from "../lib/password.ts";
 import { rateLimit } from "../lib/rate-limit.ts";
 import { saveEvidenceFile } from "../lib/storage.ts";
@@ -159,12 +159,17 @@ publicRoutes.post("/register", async (c) => {
     paymentUrl: payUrl,
     supportEmail: catalog.settings.email,
   });
-  await sendMail({
+  await sendMailSafe({
     to: email,
     replyTo: catalog.settings.email,
     subject: rendered.subject,
     text: rendered.text,
     html: rendered.html,
+  });
+  await sendMailSafe({
+    to: process.env.ADMIN_EMAIL || "leo.a@example.org",
+    subject: `New registration · ${referenceCode}`,
+    text: `${parsed.data.name} <${email}> registered for ${course.name} (${referenceCode}).\nPhone: ${parsed.data.phone}\nCountry: ${parsed.data.country}\nFee: ${amount}\n\nReview students in admin.`,
   });
 
   return c.json({
@@ -265,12 +270,12 @@ publicRoutes.post("/evidence", async (c) => {
       .where(eq(students.id, student.id));
     await audit("public", "evidence_submit", "student", student.id, { evidenceId: id });
 
-    await sendMail({
+    await sendMailSafe({
       to: process.env.ADMIN_EMAIL || "leo.a@example.org",
       subject: `Payment evidence ${student.referenceCode}`,
       text: `${student.name} uploaded evidence for ${student.referenceCode}. Review it in admin.`,
     });
-    await sendMail({
+    await sendMailSafe({
       to: student.email,
       subject: `We have your UPSCALE receipt ${student.referenceCode}`,
       text: `Hello ${student.name},\n\nYour payment evidence is in the review queue. We will email you when it is approved or if we need another file.\n\nUPSCALE`,

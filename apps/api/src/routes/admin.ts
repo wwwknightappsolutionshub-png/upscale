@@ -18,7 +18,7 @@ import {
 import { createSession, currentAdmin, destroySession, requireAdmin } from "../lib/auth.ts";
 import { audit, loadCatalog, nextCohort } from "../lib/catalog.ts";
 import { nid, nowIso } from "../lib/ids.ts";
-import { sendMail } from "../lib/mail.ts";
+import { describeMailTransport, sendMail, sendMailSafe } from "../lib/mail.ts";
 import { verifyPassword } from "../lib/password.ts";
 import { safeJoinUpload, saveInstructorPhoto, mimeFromUploadKey } from "../lib/storage.ts";
 import { adminCss } from "../admin/styles.ts";
@@ -421,7 +421,7 @@ adminRoutes.post("/evidence/:id/approve", async (c) => {
   await audit(admin.email, "evidence_approve", "student", student.id, { nextStatus });
   const catalog = await loadCatalog();
   const course = catalog.courses.find((x) => x.slug === student.courseSlug);
-  await sendMail({
+  await sendMailSafe({
     to: student.email,
     subject: nextStatus === "enrolled" ? `Enrolled · ${student.referenceCode}` : `Waitlist · ${student.referenceCode}`,
     text:
@@ -449,7 +449,7 @@ adminRoutes.post("/evidence/:id/reject", async (c) => {
     .where(eq(paymentEvidence.id, id));
   await db.update(students).set({ status: "rejected", updatedAt: ts }).where(eq(students.id, student.id));
   await audit(admin.email, "evidence_reject", "student", student.id, { reason });
-  await sendMail({
+  await sendMailSafe({
     to: student.email,
     subject: `Receipt not accepted · ${student.referenceCode}`,
     text: `Hello ${student.name},\n\nWe could not verify that receipt.\n\n${reason}\n\nUpload a clearer file on your payment page.\n\nUPSCALE`,
@@ -888,17 +888,56 @@ adminRoutes.get("/emails/registration", async (c) => {
   const admin = c.get("admin");
   if (!canManageEmailTemplates(roleOf(admin))) return forbid(c, admin, "Only super admins can edit email templates.");
   const templates = await loadEmailTemplates();
+  const mailNote = describeMailTransport();
+  const testOk = c.req.query("test") || "";
+  const testErr = c.req.query("testerr") || "";
   return c.html(
     desk(
       admin,
       "Emails",
       `
       ${pageHead("Registration email", "Sent immediately when someone reserves a seat. Use merge tags for dynamic fields.")}
+      <p class="note"><strong>Outbound mail:</strong> ${esc(mailNote)}</p>
+      ${testOk ? `<p class="banner ok">${esc(testOk)}</p>` : ""}
+      ${testErr ? `<p class="err">${esc(testErr)}</p>` : ""}
+      <form method="post" action="/admin/emails/test" class="stack cardish" style="margin-bottom:1rem;max-width:28rem">
+        <label>Send test email to
+          <input type="email" name="to" value="${esc(admin.email)}" required maxlength="180" />
+        </label>
+        <button type="submit">Send test email</button>
+      </form>
       ${registrationEmailEditorPage(templates.registration)}
     `,
       "/admin/emails",
     ),
   );
+});
+
+adminRoutes.post("/emails/test", async (c) => {
+  const admin = c.get("admin");
+  if (!canManageEmailTemplates(roleOf(admin))) return forbid(c, admin, "Only super admins can send test email.");
+  const body = await c.req.parseBody();
+  const to = String(body.to || admin.email).trim().toLowerCase();
+  if (!to.includes("@")) {
+    return c.redirect(`/admin/emails/registration?testerr=${encodeURIComponent("Enter a valid email address.")}`);
+  }
+  try {
+    const result = await sendMail({
+      to,
+      subject: "UPSCALE test email",
+      text: `This is a test from the UPSCALE desk.\n\nTransport: ${describeMailTransport()}\nSent at: ${new Date().toISOString()}\n`,
+      html: `<p>This is a test from the UPSCALE desk.</p><p><strong>Transport:</strong> ${esc(describeMailTransport())}</p><p>Sent at ${esc(new Date().toISOString())}</p>`,
+    });
+    const msg =
+      result.mode === "log"
+        ? `Logged only (SMTP not configured) → check apps/api/data/mail.log. Add SMTP_* to .env for real delivery.`
+        : `Test email sent to ${to}.`;
+    await audit(admin.email, "email_test", "email", to, { mode: result.mode });
+    return c.redirect(`/admin/emails/registration?test=${encodeURIComponent(msg)}`);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return c.redirect(`/admin/emails/registration?testerr=${encodeURIComponent(`SMTP failed: ${message}`)}`);
+  }
 });
 
 adminRoutes.get("/emails/registration/preview", async (c) => {

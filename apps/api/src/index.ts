@@ -6,6 +6,7 @@ import { cors } from "hono/cors";
 import { secureHeaders } from "hono/secure-headers";
 import { ensureSchema } from "./db/migrate.ts";
 import { seedIfEmpty } from "./db/seed.ts";
+import { describeMailTransport } from "./lib/mail.ts";
 import { adminRoutes } from "./routes/admin.ts";
 import { publicRoutes } from "./routes/public.ts";
 
@@ -45,7 +46,13 @@ app.use(
   }),
 );
 
-app.get("/health", (c) => c.json({ ok: true, name: "UPSCALE" }));
+app.get("/health", (c) =>
+  c.json({
+    ok: true,
+    name: "UPSCALE",
+    mail: describeMailTransport(),
+  }),
+);
 app.use("/fonts/*", serveStatic({ root: "./public" }));
 app.route("/public", publicRoutes);
 app.route("/admin", adminRoutes);
@@ -58,4 +65,5 @@ await seedIfEmpty();
 serve({ fetch: app.fetch, port }, (info) => {
   console.log(`UPSCALE API http://localhost:${info.port}`);
   console.log(`Desk        http://localhost:${info.port}/admin`);
+  console.log(`Mail        ${describeMailTransport()}`);
 });

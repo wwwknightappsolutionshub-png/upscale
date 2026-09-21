@@ -34,7 +34,7 @@ Default desk login (change in `.env`):
 
 Bank details, prices, outlines, instructors, and landing copy are edited in the desk. The public site reads the API in `astro dev`. A production static build snapshots the catalog (falls back to seed content if the API is down at build time).
 
-Emails are written to `apps/api/data/mail.log` in development. Payment files land in `apps/api/uploads/` (not public).
+Emails are written to `apps/api/data/mail.log` when SMTP is not configured. For real delivery set `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASS`, and `MAIL_FROM` in `.env`. Payment files land in `apps/api/uploads/` (not public).
 
 ## Fonts
 
@@ -48,7 +48,7 @@ Blue `#1F5EFF` · Red `#E31C24` · Ink `#111111`
 ## Production sketch
 
 1. Put the API on a small Node host with a persistent disk for SQLite (or switch `DATABASE_URL` to libSQL/Postgres later).
-2. Set `WEB_ORIGIN`, `PUBLIC_SITE_URL`, `PUBLIC_API_URL`, `SESSION_SECRET`, and `BUILD_TOKEN`.
+2. Set `WEB_ORIGIN`, `PUBLIC_SITE_URL`, `PUBLIC_API_URL`, `SESSION_SECRET`, `BUILD_TOKEN`, and SMTP (`SMTP_HOST`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM`).
 3. Build the Astro app (`npm run build`) and serve `apps/web/dist` on Nginx/CDN.
 4. Point the desk at `https://your-domain/admin` and do not index it.
 5. Desk content saves (courses, landing, instructors, cohorts) rebuild the public site automatically when `PUBLISH_ON_SAVE=1`. You can also click **Publish public site now** on the desk home.

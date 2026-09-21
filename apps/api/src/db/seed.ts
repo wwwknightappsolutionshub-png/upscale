@@ -7,11 +7,18 @@ import { ensureEmailTemplates } from "../lib/email-templates.ts";
 import { hashPassword } from "../lib/password.ts";
 import { nid, nowIso } from "../lib/ids.ts";
 
+export type CatalogEnsureReport = {
+  instructorsAdded: string[];
+  coursesAdded: string[];
+  cohortsAdded: string[];
+  proofUpdated: boolean;
+};
+
 async function ensureInstructor(i: (typeof seedCatalog.instructors)[number]) {
   const byId = await db.select({ id: instructors.id }).from(instructors).where(eq(instructors.id, i.id)).limit(1);
-  if (byId.length) return;
+  if (byId.length) return false;
   const bySlug = await db.select({ id: instructors.id }).from(instructors).where(eq(instructors.slug, i.slug)).limit(1);
-  if (bySlug.length) return;
+  if (bySlug.length) return false;
   await db.insert(instructors).values({
     id: i.id,
     slug: i.slug,
@@ -23,13 +30,14 @@ async function ensureInstructor(i: (typeof seedCatalog.instructors)[number]) {
     courseSlugsJson: JSON.stringify(i.courseSlugs),
     photoKey: "",
   });
+  return true;
 }
 
 async function ensureCourse(c: (typeof seedCatalog.courses)[number]) {
   const byId = await db.select({ id: courses.id }).from(courses).where(eq(courses.id, c.id)).limit(1);
-  if (byId.length) return;
+  if (byId.length) return false;
   const bySlug = await db.select({ id: courses.id }).from(courses).where(eq(courses.slug, c.slug)).limit(1);
-  if (bySlug.length) return;
+  if (bySlug.length) return false;
   await db.insert(courses).values({
     id: c.id,
     slug: c.slug,
@@ -50,11 +58,12 @@ async function ensureCourse(c: (typeof seedCatalog.courses)[number]) {
     instructorIdsJson: JSON.stringify(c.instructorIds),
     sortOrder: c.sortOrder,
   });
+  return true;
 }
 
 async function ensureCohort(co: (typeof seedCatalog.cohorts)[number]) {
   const byId = await db.select({ id: cohorts.id }).from(cohorts).where(eq(cohorts.id, co.id)).limit(1);
-  if (byId.length) return;
+  if (byId.length) return false;
   await db.insert(cohorts).values({
     id: co.id,
     courseSlug: co.courseSlug,
@@ -69,31 +78,77 @@ async function ensureCohort(co: (typeof seedCatalog.cohorts)[number]) {
     currency: co.currency,
     priceNgn: co.priceNgn && co.priceNgn > 0 ? co.priceNgn : 0,
   });
+  return true;
 }
 
 async function ensureTrackCountInProof() {
   const row = (await db.select().from(settings).where(eq(settings.id, "main")).limit(1))[0];
-  if (!row) return;
+  if (!row) return false;
   let parsed: LandingSettings;
   try {
     parsed = JSON.parse(row.json) as LandingSettings;
   } catch {
-    return;
+    return false;
   }
-  if (!Array.isArray(parsed.proof)) return;
+  if (!Array.isArray(parsed.proof)) return false;
   const trackStat = parsed.proof.find((p) => /career tracks/i.test(String(p.label || "")));
-  if (!trackStat) return;
+  if (!trackStat) return false;
   const expected = String(seedCatalog.courses.length);
-  if (String(trackStat.value) === expected) return;
+  if (String(trackStat.value) === expected) return false;
   trackStat.value = expected;
   await db.update(settings).set({ json: JSON.stringify(parsed) }).where(eq(settings.id, "main"));
+  return true;
 }
 
-async function ensureCatalogAdditions() {
-  for (const i of seedCatalog.instructors) await ensureInstructor(i);
-  for (const c of seedCatalog.courses) await ensureCourse(c);
-  for (const co of seedCatalog.cohorts) await ensureCohort(co);
-  await ensureTrackCountInProof();
+/** Insert any seed courses / instructors / cohorts missing from an already-populated DB. */
+export async function ensureCatalogAdditions(): Promise<CatalogEnsureReport> {
+  const report: CatalogEnsureReport = {
+    instructorsAdded: [],
+    coursesAdded: [],
+    cohortsAdded: [],
+    proofUpdated: false,
+  };
+
+  // Courses first so a failing instructor migration cannot block new tracks.
+  for (const c of seedCatalog.courses) {
+    try {
+      if (await ensureCourse(c)) report.coursesAdded.push(c.slug);
+    } catch (err) {
+      console.error(`[catalog] failed to ensure course ${c.slug}:`, err);
+    }
+  }
+  for (const i of seedCatalog.instructors) {
+    try {
+      if (await ensureInstructor(i)) report.instructorsAdded.push(i.slug);
+    } catch (err) {
+      console.error(`[catalog] failed to ensure instructor ${i.slug}:`, err);
+    }
+  }
+  for (const co of seedCatalog.cohorts) {
+    try {
+      if (await ensureCohort(co)) report.cohortsAdded.push(co.id);
+    } catch (err) {
+      console.error(`[catalog] failed to ensure cohort ${co.id}:`, err);
+    }
+  }
+  try {
+    report.proofUpdated = await ensureTrackCountInProof();
+  } catch (err) {
+    console.error("[catalog] failed to update proof track count:", err);
+  }
+
+  const added =
+    report.instructorsAdded.length + report.coursesAdded.length + report.cohortsAdded.length;
+  if (added || report.proofUpdated) {
+    console.log(
+      `[catalog] ensured +${report.instructorsAdded.length} instructors, +${report.coursesAdded.length} courses, +${report.cohortsAdded.length} cohorts` +
+        (report.proofUpdated ? ", proof→6 tracks" : ""),
+    );
+    if (report.coursesAdded.length) console.log(`[catalog] courses: ${report.coursesAdded.join(", ")}`);
+    if (report.instructorsAdded.length) console.log(`[catalog] instructors: ${report.instructorsAdded.join(", ")}`);
+  }
+
+  return report;
 }
 
 export async function seedIfEmpty() {
@@ -154,6 +209,7 @@ export async function seedIfEmpty() {
       id: "main",
       json: JSON.stringify(seedCatalog.settings),
     });
+    console.log(`[catalog] fresh seed: ${seedCatalog.courses.length} courses, ${seedCatalog.instructors.length} instructors`);
   }
 
   await ensureCatalogAdditions();
