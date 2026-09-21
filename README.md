@@ -2,7 +2,7 @@
 
 **learn today, build tomorrow**
 
-Virtual training institute for people switching career path, entering the IT space, or upscaling skills they already use. Four live-online tracks: Graphic Design, Front-End Development, Backend Development, Full Stack Development.
+Virtual training institute for people switching career path, entering the IT space, or upscaling skills they already use. Six live-online tracks: Graphic Design, UI/UX Designs, Photography / Videography, Front-End Development, Backend Development, Full Stack Development.
 
 This repo is independent. It is not part of any other product.
 

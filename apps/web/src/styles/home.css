@@ -576,6 +576,8 @@
 .track-full-stack-development::before {
   background: linear-gradient(90deg, var(--blue), var(--red));
 }
+.track-ui-ux-designs::before { background: var(--blue); }
+.track-photography-videography::before { background: var(--red); }
 
 .track-backend-development .track-visual {
   background: linear-gradient(160deg, #171717, #2a1216);
@@ -593,6 +595,20 @@
   background: radial-gradient(circle, rgba(227, 28, 36, 0.22), transparent 70%);
 }
 .track-full-stack-development .kicker { color: var(--red-ink); }
+.track-ui-ux-designs .track-visual {
+  background:
+    linear-gradient(145deg, rgba(31, 94, 255, 0.14), transparent 55%),
+    linear-gradient(320deg, #fff, #eef3ff 70%);
+}
+.track-ui-ux-designs .kicker { color: var(--blue-ink); }
+.track-photography-videography .track-visual {
+  background: linear-gradient(160deg, #1a1214, #2e171a);
+  border-color: #111;
+}
+.track-photography-videography .track-visual__glow {
+  background: radial-gradient(circle, rgba(227, 28, 36, 0.4), transparent 70%);
+}
+.track-photography-videography .kicker { color: var(--red-ink); }
 
 .mark {
   transition: transform 0.45s cubic-bezier(0.22, 1.2, 0.36, 1);
@@ -706,7 +722,6 @@
 
   .tracks {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    grid-template-rows: repeat(2, minmax(0, 1fr));
     gap: 1.1rem;
   }
   .track {

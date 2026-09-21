@@ -1,29 +1,99 @@
 import { eq } from "drizzle-orm";
 import { seedCatalog } from "@upscale/shared/seed";
+import type { LandingSettings } from "@upscale/shared";
 import { db } from "./client.ts";
 import { adminUsers, cohorts, courses, instructors, settings } from "./schema.ts";
 import { ensureEmailTemplates } from "../lib/email-templates.ts";
 import { hashPassword } from "../lib/password.ts";
 import { nid, nowIso } from "../lib/ids.ts";
 
-const FIFTH_INSTRUCTOR = {
-  id: "ins_faculty",
-  slug: "faculty",
-  name: "Faculty",
-  role: "",
-  bio: "",
-  initials: "F",
-  accent: "blue",
-  courseSlugsJson: "[]",
-  photoKey: "",
-};
-
-async function ensureFifthInstructor() {
-  const byId = await db.select({ id: instructors.id }).from(instructors).where(eq(instructors.id, FIFTH_INSTRUCTOR.id)).limit(1);
+async function ensureInstructor(i: (typeof seedCatalog.instructors)[number]) {
+  const byId = await db.select({ id: instructors.id }).from(instructors).where(eq(instructors.id, i.id)).limit(1);
   if (byId.length) return;
-  const bySlug = await db.select({ id: instructors.id }).from(instructors).where(eq(instructors.slug, FIFTH_INSTRUCTOR.slug)).limit(1);
+  const bySlug = await db.select({ id: instructors.id }).from(instructors).where(eq(instructors.slug, i.slug)).limit(1);
   if (bySlug.length) return;
-  await db.insert(instructors).values(FIFTH_INSTRUCTOR);
+  await db.insert(instructors).values({
+    id: i.id,
+    slug: i.slug,
+    name: i.name,
+    role: i.role,
+    bio: i.bio,
+    initials: i.initials,
+    accent: i.accent,
+    courseSlugsJson: JSON.stringify(i.courseSlugs),
+    photoKey: "",
+  });
+}
+
+async function ensureCourse(c: (typeof seedCatalog.courses)[number]) {
+  const byId = await db.select({ id: courses.id }).from(courses).where(eq(courses.id, c.id)).limit(1);
+  if (byId.length) return;
+  const bySlug = await db.select({ id: courses.id }).from(courses).where(eq(courses.slug, c.slug)).limit(1);
+  if (bySlug.length) return;
+  await db.insert(courses).values({
+    id: c.id,
+    slug: c.slug,
+    name: c.name,
+    shortPitch: c.shortPitch,
+    durationWeeks: c.durationWeeks,
+    weeklyHours: c.weeklyHours,
+    price: c.price,
+    currency: c.currency,
+    seatCap: c.seatCap,
+    registrationOpen: c.registrationOpen ? 1 : 0,
+    outcomesJson: JSON.stringify(c.outcomes),
+    outlineJson: JSON.stringify(c.outline),
+    toolsJson: JSON.stringify(c.tools),
+    prerequisites: c.prerequisites,
+    faqJson: JSON.stringify(c.faq),
+    ogDescription: c.ogDescription,
+    instructorIdsJson: JSON.stringify(c.instructorIds),
+    sortOrder: c.sortOrder,
+  });
+}
+
+async function ensureCohort(co: (typeof seedCatalog.cohorts)[number]) {
+  const byId = await db.select({ id: cohorts.id }).from(cohorts).where(eq(cohorts.id, co.id)).limit(1);
+  if (byId.length) return;
+  await db.insert(cohorts).values({
+    id: co.id,
+    courseSlug: co.courseSlug,
+    startDate: co.startDate,
+    endDate: co.endDate,
+    daysLabel: co.daysLabel,
+    timeLabel: co.timeLabel,
+    timezone: co.timezone,
+    seatCap: co.seatCap,
+    seatsTaken: co.seatsTaken,
+    price: co.price,
+    currency: co.currency,
+    priceNgn: co.priceNgn && co.priceNgn > 0 ? co.priceNgn : 0,
+  });
+}
+
+async function ensureTrackCountInProof() {
+  const row = (await db.select().from(settings).where(eq(settings.id, "main")).limit(1))[0];
+  if (!row) return;
+  let parsed: LandingSettings;
+  try {
+    parsed = JSON.parse(row.json) as LandingSettings;
+  } catch {
+    return;
+  }
+  if (!Array.isArray(parsed.proof)) return;
+  const trackStat = parsed.proof.find((p) => /career tracks/i.test(String(p.label || "")));
+  if (!trackStat) return;
+  const expected = String(seedCatalog.courses.length);
+  if (String(trackStat.value) === expected) return;
+  trackStat.value = expected;
+  await db.update(settings).set({ json: JSON.stringify(parsed) }).where(eq(settings.id, "main"));
+}
+
+async function ensureCatalogAdditions() {
+  for (const i of seedCatalog.instructors) await ensureInstructor(i);
+  for (const c of seedCatalog.courses) await ensureCourse(c);
+  for (const co of seedCatalog.cohorts) await ensureCohort(co);
+  await ensureTrackCountInProof();
 }
 
 export async function seedIfEmpty() {
@@ -86,7 +156,7 @@ export async function seedIfEmpty() {
     });
   }
 
-  await ensureFifthInstructor();
+  await ensureCatalogAdditions();
   await ensureEmailTemplates();
 
   const email = (process.env.ADMIN_EMAIL || "leo.a@example.org").toLowerCase();

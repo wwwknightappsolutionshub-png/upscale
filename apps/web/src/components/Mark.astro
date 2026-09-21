@@ -1,6 +1,16 @@
 ---
 interface Props {
-  name: "rise" | "switch" | "newbie" | "upskill" | "graphic-design" | "front-end-development" | "backend-development" | "full-stack-development";
+  name:
+    | "rise"
+    | "switch"
+    | "newbie"
+    | "upskill"
+    | "graphic-design"
+    | "front-end-development"
+    | "backend-development"
+    | "full-stack-development"
+    | "ui-ux-designs"
+    | "photography-videography";
   class?: string;
 }
 const { name, class: className } = Astro.props;
@@ -76,6 +86,24 @@ const { name, class: className } = Astro.props;
       <ellipse cx="118" cy="118" rx="40" ry="14" fill="#E31C24" />
       <rect x="78" y="118" width="80" height="24" fill="#E31C24" />
       <ellipse cx="118" cy="142" rx="40" ry="14" fill="#111" />
+    </svg>
+  )}
+  {name === "ui-ux-designs" && (
+    <svg viewBox="0 0 180 180" fill="none">
+      <rect x="36" y="28" width="72" height="124" rx="10" stroke="#111" stroke-width="6" />
+      <rect x="48" y="48" width="48" height="72" rx="4" fill="#1F5EFF" opacity="0.2" stroke="#1F5EFF" stroke-width="4" />
+      <circle cx="72" cy="136" r="5" fill="#111" />
+      <path d="M118 52l28 14-28 14V52z" fill="#E31C24" />
+      <path d="M118 92h40M118 110h28" stroke="#111" stroke-width="7" stroke-linecap="round" />
+    </svg>
+  )}
+  {name === "photography-videography" && (
+    <svg viewBox="0 0 180 180" fill="none">
+      <rect x="28" y="52" width="124" height="84" rx="10" stroke="#111" stroke-width="6" />
+      <path d="M58 52l12-18h40l12 18" stroke="#111" stroke-width="6" stroke-linejoin="round" />
+      <circle cx="90" cy="94" r="28" stroke="#1F5EFF" stroke-width="8" />
+      <circle cx="90" cy="94" r="12" fill="#E31C24" />
+      <rect x="128" y="64" width="14" height="10" rx="2" fill="#111" />
     </svg>
   )}
 </div>

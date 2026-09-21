@@ -642,6 +642,43 @@ body.nav-open .rail {
   color: var(--ink);
 }
 
+.course-hero-ui-ux-designs {
+  background: #fff;
+  color: var(--ink);
+  border: 1px solid rgba(17, 17, 17, 0.1);
+  box-shadow:
+    0 0 0 4px var(--blue) inset,
+    0 12px 32px rgba(17, 17, 17, 0.08);
+}
+.course-hero-ui-ux-designs .kicker { color: var(--blue-ink); }
+.course-hero-ui-ux-designs .lede,
+.course-hero-ui-ux-designs .richtext { color: var(--muted); }
+.course-hero-ui-ux-designs .btn {
+  background: var(--ink);
+  color: #fff;
+}
+.course-hero-ui-ux-designs .btn:hover {
+  background: var(--blue);
+  color: #fff;
+}
+
+.course-hero-photography-videography {
+  background: linear-gradient(145deg, #1a1214 0%, #2a1014 55%, #8b1018 100%);
+  color: #fff;
+  box-shadow: 0 14px 40px rgba(227, 28, 36, 0.18);
+}
+.course-hero-photography-videography .kicker { color: #ff8a8e; }
+.course-hero-photography-videography .lede,
+.course-hero-photography-videography .richtext { color: rgba(255, 255, 255, 0.78); }
+.course-hero-photography-videography .btn {
+  background: var(--red);
+  color: #fff;
+}
+.course-hero-photography-videography .btn:hover {
+  background: #fff;
+  color: var(--ink);
+}
+
 .course-body {
   padding-top: 0.2rem;
   width: 100%;
@@ -1532,6 +1569,27 @@ img.avatar {
 .schedule-full-stack-development .schedule-bar span { background: var(--red); }
 .schedule-full-stack-development .btn { background: var(--red); color: #fff; }
 .schedule-full-stack-development .text-btn { color: #fff; border-bottom-color: #8fb0ff; }
+.schedule-ui-ux-designs {
+  background: #fff;
+  border: 1px solid rgba(17, 17, 17, 0.1);
+  box-shadow: inset 0 0 0 3px var(--blue);
+}
+.schedule-ui-ux-designs .schedule-when { color: var(--blue-ink); }
+.schedule-ui-ux-designs .schedule-bar span { background: var(--blue); }
+.schedule-photography-videography {
+  background: linear-gradient(145deg, #1a1214, #3a1014);
+  color: #fff;
+}
+.schedule-photography-videography .schedule-meta,
+.schedule-photography-videography .schedule-until,
+.schedule-photography-videography .schedule-seats p {
+  color: rgba(255, 255, 255, 0.78);
+}
+.schedule-photography-videography .schedule-when { color: #ff8a8e; }
+.schedule-photography-videography .schedule-bar { background: rgba(255, 255, 255, 0.15); }
+.schedule-photography-videography .schedule-bar span { background: var(--red); }
+.schedule-photography-videography .btn { background: var(--red); color: #fff; }
+.schedule-photography-videography .text-btn { color: #fff; border-bottom-color: #8fb0ff; }
 
 @media (min-width: 480px) {
   .proof { grid-template-columns: 1fr 1fr; }
