@@ -10,6 +10,8 @@ interface Props {
     | "backend-development"
     | "full-stack-development"
     | "ui-ux-designs"
+    | "professional-photo-editing"
+    | "professional-video-editing-capcut"
     | "photography-videography";
   class?: string;
 }
@@ -97,13 +99,22 @@ const { name, class: className } = Astro.props;
       <path d="M118 92h40M118 110h28" stroke="#111" stroke-width="7" stroke-linecap="round" />
     </svg>
   )}
-  {name === "photography-videography" && (
+  {(name === "professional-photo-editing" || name === "photography-videography") && (
     <svg viewBox="0 0 180 180" fill="none">
       <rect x="28" y="52" width="124" height="84" rx="10" stroke="#111" stroke-width="6" />
       <path d="M58 52l12-18h40l12 18" stroke="#111" stroke-width="6" stroke-linejoin="round" />
       <circle cx="90" cy="94" r="28" stroke="#1F5EFF" stroke-width="8" />
       <circle cx="90" cy="94" r="12" fill="#E31C24" />
       <rect x="128" y="64" width="14" height="10" rx="2" fill="#111" />
+    </svg>
+  )}
+  {name === "professional-video-editing-capcut" && (
+    <svg viewBox="0 0 180 180" fill="none">
+      <rect x="28" y="48" width="124" height="84" rx="10" stroke="#111" stroke-width="6" />
+      <path d="M72 72l44 20-44 20V72z" fill="#E31C24" />
+      <rect x="40" y="144" width="28" height="8" rx="2" fill="#1F5EFF" />
+      <rect x="76" y="144" width="28" height="8" rx="2" fill="#111" />
+      <rect x="112" y="144" width="28" height="8" rx="2" fill="#E31C24" />
     </svg>
   )}
 </div>

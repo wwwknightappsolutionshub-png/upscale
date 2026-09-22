@@ -9,7 +9,8 @@ export const COURSE_SLUGS = [
   "backend-development",
   "full-stack-development",
   "ui-ux-designs",
-  "photography-videography",
+  "professional-photo-editing",
+  "professional-video-editing-capcut",
 ] as const;
 
 export type CourseSlug = (typeof COURSE_SLUGS)[number];
@@ -20,7 +21,8 @@ export const COURSE_PREFIX: Record<CourseSlug, string> = {
   "backend-development": "BE",
   "full-stack-development": "FS",
   "ui-ux-designs": "UX",
-  "photography-videography": "PV",
+  "professional-photo-editing": "PE",
+  "professional-video-editing-capcut": "VC",
 };
 
 export const STUDENT_STATUSES = [

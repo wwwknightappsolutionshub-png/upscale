@@ -2,7 +2,7 @@ import { eq } from "drizzle-orm";
 import { seedCatalog } from "@upscale/shared/seed";
 import type { LandingSettings } from "@upscale/shared";
 import { db } from "./client.ts";
-import { adminUsers, cohorts, courses, instructors, settings } from "./schema.ts";
+import { adminUsers, cohorts, courses, instructors, settings, students } from "./schema.ts";
 import { ensureEmailTemplates } from "../lib/email-templates.ts";
 import { hashPassword } from "../lib/password.ts";
 import { nid, nowIso } from "../lib/ids.ts";
@@ -100,6 +100,80 @@ async function ensureTrackCountInProof() {
   return true;
 }
 
+/** Split legacy Photography / Videography into photo + CapCut video tracks on existing DBs. */
+async function migratePhotographyVideographySplit(): Promise<string[]> {
+  const changed: string[] = [];
+  const pe = seedCatalog.courses.find((c) => c.slug === "professional-photo-editing");
+  if (!pe) return changed;
+
+  const legacy = await db.select().from(courses).where(eq(courses.slug, "photography-videography")).limit(1);
+  const byId = await db.select().from(courses).where(eq(courses.id, "crs_pv")).limit(1);
+
+  if (legacy[0] || (byId[0] && byId[0].slug === "photography-videography")) {
+    const row = legacy[0] || byId[0]!;
+    await db
+      .update(courses)
+      .set({
+        slug: pe.slug,
+        name: pe.name,
+        shortPitch: pe.shortPitch,
+        durationWeeks: pe.durationWeeks,
+        weeklyHours: pe.weeklyHours,
+        price: pe.price,
+        currency: pe.currency,
+        seatCap: pe.seatCap,
+        registrationOpen: pe.registrationOpen ? 1 : 0,
+        outcomesJson: JSON.stringify(pe.outcomes),
+        outlineJson: JSON.stringify(pe.outline),
+        toolsJson: JSON.stringify(pe.tools),
+        prerequisites: pe.prerequisites,
+        faqJson: JSON.stringify(pe.faq),
+        ogDescription: pe.ogDescription,
+        instructorIdsJson: JSON.stringify(pe.instructorIds),
+        sortOrder: pe.sortOrder,
+      })
+      .where(eq(courses.id, row.id));
+    changed.push("professional-photo-editing←photography-videography");
+  }
+
+  // Point legacy cohort / student rows at the photo track slug.
+  const legacyCohorts = await db.select({ id: cohorts.id }).from(cohorts).where(eq(cohorts.courseSlug, "photography-videography"));
+  if (legacyCohorts.length) {
+    await db
+      .update(cohorts)
+      .set({ courseSlug: "professional-photo-editing" })
+      .where(eq(cohorts.courseSlug, "photography-videography"));
+    changed.push(`cohorts:${legacyCohorts.length}`);
+  }
+
+  const legacyStudents = await db.select({ id: students.id }).from(students).where(eq(students.courseSlug, "photography-videography"));
+  if (legacyStudents.length) {
+    await db
+      .update(students)
+      .set({ courseSlug: "professional-photo-editing" })
+      .where(eq(students.courseSlug, "photography-videography"));
+    changed.push(`students:${legacyStudents.length}`);
+  }
+
+  // Keep Devon linked to both new tracks.
+  const devon = seedCatalog.instructors.find((i) => i.id === "ins_devon");
+  if (devon) {
+    const row = (await db.select().from(instructors).where(eq(instructors.id, devon.id)).limit(1))[0];
+    if (row) {
+      const next = JSON.stringify(devon.courseSlugs);
+      if (row.courseSlugsJson !== next || row.bio !== devon.bio) {
+        await db
+          .update(instructors)
+          .set({ courseSlugsJson: next, bio: devon.bio })
+          .where(eq(instructors.id, devon.id));
+        changed.push("devon-hart");
+      }
+    }
+  }
+
+  return changed;
+}
+
 /** Insert any seed courses / instructors / cohorts missing from an already-populated DB. */
 export async function ensureCatalogAdditions(): Promise<CatalogEnsureReport> {
   const report: CatalogEnsureReport = {
@@ -108,6 +182,13 @@ export async function ensureCatalogAdditions(): Promise<CatalogEnsureReport> {
     cohortsAdded: [],
     proofUpdated: false,
   };
+
+  try {
+    const migrated = await migratePhotographyVideographySplit();
+    if (migrated.length) console.log(`[catalog] photography split: ${migrated.join(", ")}`);
+  } catch (err) {
+    console.error("[catalog] failed photography/videography split:", err);
+  }
 
   // Courses first so a failing instructor migration cannot block new tracks.
   for (const c of seedCatalog.courses) {
@@ -142,7 +223,7 @@ export async function ensureCatalogAdditions(): Promise<CatalogEnsureReport> {
   if (added || report.proofUpdated) {
     console.log(
       `[catalog] ensured +${report.instructorsAdded.length} instructors, +${report.coursesAdded.length} courses, +${report.cohortsAdded.length} cohorts` +
-        (report.proofUpdated ? ", proof→6 tracks" : ""),
+        (report.proofUpdated ? `, proof→${seedCatalog.courses.length} tracks` : ""),
     );
     if (report.coursesAdded.length) console.log(`[catalog] courses: ${report.coursesAdded.join(", ")}`);
     if (report.instructorsAdded.length) console.log(`[catalog] instructors: ${report.instructorsAdded.join(", ")}`);

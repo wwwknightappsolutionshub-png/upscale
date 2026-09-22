@@ -5,13 +5,15 @@ import { formatDay, getCatalog, nextCohort } from "../../lib/catalog";
 import { stripHtml } from "../../lib/rich";
 
 const catalog = await getCatalog();
+const trackCount = catalog.courses.length;
+const trackWord = trackCount === 1 ? "track" : "tracks";
 ---
 <Horizon
   title="Courses · UPSCALE"
-  description="Six virtual tracks: Graphic Design, UI/UX Designs, Photography / Videography, Front-End, Backend, and Full Stack Development."
+  description={`${trackCount} virtual tracks at UPSCALE — design, product, photo, video, front-end, backend, and full stack.`}
 >
   <p class="kicker">Programmes</p>
-  <h1 class="display">Six tracks. One institute.</h1>
+  <h1 class="display">{trackCount} {trackWord}. One institute.</h1>
   <p class="lede">
     Pick a line of work, not a pile of modules. Each page is the syllabus, the next cohort, and who teaches it.
   </p>

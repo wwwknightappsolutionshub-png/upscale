@@ -577,7 +577,9 @@
   background: linear-gradient(90deg, var(--blue), var(--red));
 }
 .track-ui-ux-designs::before { background: var(--blue); }
-.track-photography-videography::before { background: var(--red); }
+.track-photography-videography::before,
+.track-professional-photo-editing::before,
+.track-professional-video-editing-capcut::before { background: var(--red); }
 
 .track-backend-development .track-visual {
   background: linear-gradient(160deg, #171717, #2a1216);
@@ -601,14 +603,20 @@
     linear-gradient(320deg, #fff, #eef3ff 70%);
 }
 .track-ui-ux-designs .kicker { color: var(--blue-ink); }
-.track-photography-videography .track-visual {
+.track-photography-videography .track-visual,
+.track-professional-photo-editing .track-visual,
+.track-professional-video-editing-capcut .track-visual {
   background: linear-gradient(160deg, #1a1214, #2e171a);
   border-color: #111;
 }
-.track-photography-videography .track-visual__glow {
+.track-photography-videography .track-visual__glow,
+.track-professional-photo-editing .track-visual__glow,
+.track-professional-video-editing-capcut .track-visual__glow {
   background: radial-gradient(circle, rgba(227, 28, 36, 0.4), transparent 70%);
 }
-.track-photography-videography .kicker { color: var(--red-ink); }
+.track-photography-videography .kicker,
+.track-professional-photo-editing .kicker,
+.track-professional-video-editing-capcut .kicker { color: var(--red-ink); }
 
 .mark {
   transition: transform 0.45s cubic-bezier(0.22, 1.2, 0.36, 1);
