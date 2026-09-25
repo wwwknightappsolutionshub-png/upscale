@@ -152,7 +152,7 @@ adminRoutes.get("/", async (c) => {
       </ul>
       <div class="split">
         <section class="panel">
-          <h2>Open cohorts</h2>
+          <h2>Open intakes</h2>
           <div class="table-wrap">
           <table>
             <thead><tr><th>Course</th><th>Starts</th><th>Seats</th><th>Fee</th></tr></thead>
@@ -552,7 +552,7 @@ adminRoutes.get("/courses/:id", async (c) => {
           <label>Weekly hours<input name="weeklyHours" type="number" min="1" value="${row.weeklyHours}" required /></label>
           <label class="check"><input type="checkbox" name="registrationOpen" ${row.registrationOpen ? "checked" : ""} /> Registration open</label>
         </div>
-        <p class="note">NGN equivalent is saved on the open cohort for this course and shown on registration (e.g. $450 · ₦675,000). You can also edit it under <a href="/admin/cohorts">Cohorts</a>.</p>
+        <p class="note">NGN equivalent is saved on the open cohort for this course and shown on registration (e.g. $450 · ₦675,000). You can also edit it under <a href="/admin/cohorts">Calendar</a>.</p>
         <p class="note">Name, short pitch, duration, and outline also drive the homepage “The tracks” cards.</p>
         <label class="full">Short pitch<textarea id="course-short-pitch" name="shortPitch" rows="4" required>${textareaValue(row.shortPitch)}</textarea></label>
         <label class="full">Outcomes (one per line)<textarea name="outcomes" rows="6">${esc(JSON.parse(row.outcomesJson).join("\n"))}</textarea></label>
@@ -732,33 +732,54 @@ adminRoutes.post("/instructors/:id", async (c) => {
 
 adminRoutes.get("/cohorts", async (c) => {
   const admin = c.get("admin");
-  if (!canManageSiteContent(roleOf(admin))) return forbid(c, admin, "Only admins can manage cohorts.");
+  if (!canManageSiteContent(roleOf(admin))) return forbid(c, admin, "Only admins can manage the calendar.");
   const catalog = await loadCatalog();
+  const s = catalog.settings;
+  const openCount = catalog.courses.filter((course) => catalog.cohorts.some((co) => co.courseSlug === course.slug)).length;
   return c.html(
-    desk(admin, "Cohorts", `
-      ${pageHead("Cohorts", "Edit dates, capacity, and pricing for each open intake.")}
+    desk(admin, "Calendar", `
+      ${pageHead(
+        "Calendar",
+        "This desk section powers the public <strong>/schedule</strong> page (“When we meet”). Edit the page header here, then each track’s intake card below.",
+      )}
       ${flashBanner(c)}
+      <p class="note">Live page: <a href="${esc(process.env.WEB_ORIGIN?.split(",")[0] || "https://upscalecohort.com")}/schedule" target="_blank" rel="noopener">Open /schedule</a> · ${openCount} open track${openCount === 1 ? "" : "s"} · timezone from Landing (${esc(s.timezone)}).</p>
+
+      <form method="post" action="/admin/cohorts/page" class="stack cardish" style="margin-bottom:1.25rem">
+        <h2>Schedule page copy</h2>
+        <p class="note">Header and legend on /schedule. Use <code>{timezone}</code> in the supporting line to insert the site timezone automatically.</p>
+        <div class="form-grid">
+          <label>Kicker<input name="scheduleKicker" value="${esc(s.scheduleKicker)}" required maxlength="40" /></label>
+          <label>Headline<input name="scheduleTitle" value="${esc(s.scheduleTitle)}" required maxlength="80" /></label>
+          <label>Sessions / week label<input name="scheduleSessionsLabel" value="${esc(s.scheduleSessionsLabel)}" required maxlength="12" placeholder="2×" /></label>
+        </div>
+        <label class="full">Supporting line<textarea name="scheduleLede" rows="3" required maxlength="320">${esc(s.scheduleLede)}</textarea></label>
+        ${formActions("Save page copy")}
+      </form>
+
+      <h2>Intake cards</h2>
+      <p class="note">Each card on /schedule: dates, class days, time, fee, and seat cap. Course title comes from <a href="/admin/courses">Courses</a>.</p>
       <div class="cohort-grid">
       ${catalog.cohorts
         .map((co) => {
           const course = catalog.courses.find((x) => x.slug === co.courseSlug);
           return `<form method="post" action="/admin/cohorts/${co.id}" class="stack cardish">
-            <h2>${esc(co.courseSlug.replaceAll("-", " "))}</h2>
-            <p class="course-name">${esc(course?.name || co.courseSlug)}</p>
+            <h2>${esc(course?.name || co.courseSlug)}</h2>
+            <p class="course-name">${esc(co.courseSlug)}</p>
             <div class="form-grid">
               <label>Start<input type="date" name="startDate" value="${esc(co.startDate)}" required /></label>
               <label>End<input type="date" name="endDate" value="${esc(co.endDate)}" required /></label>
-              <label>Days<input name="daysLabel" value="${esc(co.daysLabel)}" required /></label>
-              <label>Time<input name="timeLabel" value="${esc(co.timeLabel)}" required /></label>
+              <label>Days<input name="daysLabel" value="${esc(co.daysLabel)}" required placeholder="Mon &amp; Wed" /></label>
+              <label>Time<input name="timeLabel" value="${esc(co.timeLabel)}" required placeholder="18:00–20:30" /></label>
               <label>Timezone<input name="timezone" value="${esc(co.timezone)}" required /></label>
               <label>Seat cap<input type="number" name="seatCap" value="${co.seatCap}" required /></label>
               <label>Price<input type="number" name="price" value="${co.price}" required /></label>
               <label>Currency<input name="currency" value="${esc(co.currency)}" required /></label>
               <label>NGN equivalent<input type="number" name="priceNgn" min="0" step="1" value="${co.priceNgn ?? ""}" placeholder="Optional" /></label>
             </div>
-            <p class="note">NGN equivalent is shown next to the USD fee on registration and payment (e.g. $450 · ₦675,000). Leave blank to hide.</p>
-            <p class="sub">Seats taken: ${co.seatsTaken} (not edited here)</p>
-            ${formActions("Save cohort")}
+            <p class="note">NGN equivalent is shown next to the USD fee (e.g. $450 · ₦675,000). Leave blank to hide.</p>
+            <p class="sub">Seats taken: ${co.seatsTaken} (updated when you enrol students — not edited here)</p>
+            ${formActions("Save intake card")}
           </form>`;
         })
         .join("")}
@@ -767,9 +788,28 @@ adminRoutes.get("/cohorts", async (c) => {
   );
 });
 
+adminRoutes.post("/cohorts/page", async (c) => {
+  const admin = c.get("admin");
+  if (!canManageSiteContent(roleOf(admin))) return forbid(c, admin, "Only admins can manage the calendar.");
+  const body = await c.req.parseBody();
+  const current = await loadCatalog();
+  const next: LandingSettings = {
+    ...current.settings,
+    scheduleKicker: String(body.scheduleKicker || "").trim() || "Calendar",
+    scheduleTitle: String(body.scheduleTitle || "").trim() || "When we meet.",
+    scheduleLede:
+      String(body.scheduleLede || "").trim() ||
+      "Live online in {timezone}. Recordings same day. Studio work still due.",
+    scheduleSessionsLabel: String(body.scheduleSessionsLabel || "").trim() || "2×",
+  };
+  await db.update(settings).set({ json: JSON.stringify(next) }).where(eq(settings.id, "main"));
+  await audit(admin.email, "schedule_page_update", "settings", "main");
+  return c.redirect(await publishAndRedirect("/admin/cohorts"));
+});
+
 adminRoutes.post("/cohorts/:id", async (c) => {
   const admin = c.get("admin");
-  if (!canManageSiteContent(roleOf(admin))) return forbid(c, admin, "Only admins can manage cohorts.");
+  if (!canManageSiteContent(roleOf(admin))) return forbid(c, admin, "Only admins can manage the calendar.");
   const body = await c.req.parseBody();
   const rawNgn = String(body.priceNgn ?? "").trim();
   const priceNgn = rawNgn === "" ? 0 : Math.max(0, Math.round(Number(rawNgn)));
@@ -836,7 +876,7 @@ adminRoutes.get("/landing", async (c) => {
 
         <h2>The tracks</h2>
         <p class="note">Section heading only. Track cards (pitch, duration, schedule, price, outline) come from
-          <a href="/admin/courses">Courses</a> and <a href="/admin/cohorts">Cohorts</a>.</p>
+          <a href="/admin/courses">Courses</a> and <a href="/admin/cohorts">Calendar</a> (public /schedule page).</p>
         <label>Section title<input name="tracksTitle" value="${esc(s.tracksTitle)}" required maxlength="60" /></label>
 
         <h2>NGN bank details</h2>

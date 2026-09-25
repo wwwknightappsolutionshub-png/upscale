@@ -727,7 +727,7 @@ const NAV: { href: string; label: string }[] = [
   { href: "/admin/students", label: "Students" },
   { href: "/admin/courses", label: "Courses" },
   { href: "/admin/instructors", label: "Instructors" },
-  { href: "/admin/cohorts", label: "Cohorts" },
+  { href: "/admin/cohorts", label: "Calendar" },
   { href: "/admin/landing", label: "Landing" },
   { href: "/admin/emails", label: "Emails" },
   { href: "/admin/team", label: "Team" },

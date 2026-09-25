@@ -48,6 +48,11 @@ export async function loadCatalog(): Promise<Catalog> {
       faqs: Array.isArray(parsedSettings.faqs) && parsedSettings.faqs.length ? parsedSettings.faqs : defaults.faqs,
       waysInTitle: String(parsedSettings.waysInTitle || defaults.waysInTitle).trim() || defaults.waysInTitle,
       tracksTitle: String(parsedSettings.tracksTitle || defaults.tracksTitle).trim() || defaults.tracksTitle,
+      scheduleKicker: String(parsedSettings.scheduleKicker || defaults.scheduleKicker).trim() || defaults.scheduleKicker,
+      scheduleTitle: String(parsedSettings.scheduleTitle || defaults.scheduleTitle).trim() || defaults.scheduleTitle,
+      scheduleLede: String(parsedSettings.scheduleLede || defaults.scheduleLede).trim() || defaults.scheduleLede,
+      scheduleSessionsLabel:
+        String(parsedSettings.scheduleSessionsLabel || defaults.scheduleSessionsLabel).trim() || defaults.scheduleSessionsLabel,
       waysIn: normalizeWaysIn(parsedSettings.waysIn),
     },
     courses: courseRows.map(rowToCourse),

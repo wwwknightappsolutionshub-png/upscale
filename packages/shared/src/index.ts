@@ -195,6 +195,14 @@ export type LandingSettings = {
   tracksTitle: string;
   /** Three audience cards under Ways in. */
   waysIn: WaysInItem[];
+  /** Public /schedule page kicker (e.g. Calendar). */
+  scheduleKicker: string;
+  /** Public /schedule page headline (e.g. When we meet.). */
+  scheduleTitle: string;
+  /** Public /schedule page supporting line. */
+  scheduleLede: string;
+  /** Legend value for sessions per week (e.g. 2×). */
+  scheduleSessionsLabel: string;
 };
 
 export type Catalog = {

@@ -15,6 +15,9 @@ const rows = catalog.courses
     cohort: NonNullable<ReturnType<typeof nextCohort>>;
     left: number;
   }[];
+
+const s = catalog.settings;
+const lede = s.scheduleLede.replaceAll("{timezone}", s.timezone);
 ---
 <Horizon
   title="Schedule · UPSCALE"
@@ -22,16 +25,14 @@ const rows = catalog.courses
 >
   <header class="schedule-head">
     <div>
-      <p class="kicker">Calendar</p>
-      <h1 class="display">When we meet.</h1>
-      <p class="lede">
-        Live online in {catalog.settings.timezone}. Recordings same day. Studio work still due.
-      </p>
+      <p class="kicker">{s.scheduleKicker}</p>
+      <h1 class="display">{s.scheduleTitle}</h1>
+      <p class="lede">{lede}</p>
     </div>
     <ul class="schedule-legend" aria-label="Intake summary">
       <li><strong>{rows.length}</strong><span>open tracks</span></li>
-      <li><strong>{catalog.settings.timezone}</strong><span>timezone</span></li>
-      <li><strong>2×</strong><span>sessions / week</span></li>
+      <li><strong>{s.timezone}</strong><span>timezone</span></li>
+      <li><strong>{s.scheduleSessionsLabel}</strong><span>sessions / week</span></li>
     </ul>
   </header>
 

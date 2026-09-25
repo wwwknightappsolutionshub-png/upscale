@@ -425,6 +425,10 @@ export const seedCatalog: Catalog = {
     ],
     waysInTitle: "Ways in",
     tracksTitle: "The tracks",
+    scheduleKicker: "Calendar",
+    scheduleTitle: "When we meet.",
+    scheduleLede: "Live online in {timezone}. Recordings same day. Studio work still due.",
+    scheduleSessionsLabel: "2×",
     waysIn: [
       {
         mark: "switch",

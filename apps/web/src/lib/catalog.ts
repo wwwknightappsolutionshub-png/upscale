@@ -21,6 +21,11 @@ function withSettingsDefaults(catalog: Catalog): Catalog {
       faqs: Array.isArray(raw.faqs) && raw.faqs.length ? raw.faqs : defaults.faqs,
       waysInTitle: String(raw.waysInTitle || defaults.waysInTitle).trim() || defaults.waysInTitle,
       tracksTitle: String(raw.tracksTitle || defaults.tracksTitle).trim() || defaults.tracksTitle,
+      scheduleKicker: String(raw.scheduleKicker || defaults.scheduleKicker).trim() || defaults.scheduleKicker,
+      scheduleTitle: String(raw.scheduleTitle || defaults.scheduleTitle).trim() || defaults.scheduleTitle,
+      scheduleLede: String(raw.scheduleLede || defaults.scheduleLede).trim() || defaults.scheduleLede,
+      scheduleSessionsLabel:
+        String(raw.scheduleSessionsLabel || defaults.scheduleSessionsLabel).trim() || defaults.scheduleSessionsLabel,
       waysIn: Array.isArray(raw.waysIn) && raw.waysIn.length ? raw.waysIn : defaults.waysIn,
       whatsapp: raw.whatsapp || defaults.whatsapp,
     },
