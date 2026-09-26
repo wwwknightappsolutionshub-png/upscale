@@ -1,37 +1,49 @@
 ---
 import Horizon from "../../layouts/Horizon.astro";
 import SpiralWeb from "../../components/SpiralWeb.astro";
-import { getCatalog } from "../../lib/catalog";
+import { getCatalog, peerInstructors, uniqueFaculty } from "../../lib/catalog";
 import { stripHtml } from "../../lib/rich";
 import Avatar from "../../components/Avatar.astro";
 
 export async function getStaticPaths() {
   const catalog = await getCatalog();
+  // Emit every DB slug so old/duplicate URLs still resolve, then merge below.
   return catalog.instructors.map((i) => ({ params: { slug: i.slug } }));
 }
 
 const catalog = await getCatalog();
-const person = catalog.instructors.find((i) => i.slug === Astro.params.slug);
-if (!person) return Astro.redirect("/instructors");
-const courses = catalog.courses.filter((c) => person.courseSlugs.includes(c.slug));
+const raw = catalog.instructors.find((i) => i.slug === Astro.params.slug);
+if (!raw) return Astro.redirect("/instructors");
+
+const peers = peerInstructors(catalog, raw);
+const person = uniqueFaculty(peers)[0] || { ...raw, roles: raw.role ? [raw.role] : [] };
+
+// Prefer one canonical URL per person (first row in the merged cluster).
+if (person.slug && person.slug !== Astro.params.slug) {
+  return Astro.redirect(`/instructors/${person.slug}`);
+}
+
+const courseSlugs = new Set(peers.flatMap((p) => p.courseSlugs));
+const courses = catalog.courses.filter((c) => courseSlugs.has(c.slug));
+const roleLabel = person.roles?.length ? person.roles.join(" · ") : person.role;
 const jsonLd = {
   "@context": "https://schema.org",
   "@type": "Person",
   name: person.name,
-  jobTitle: person.role,
-  description: stripHtml(person.bio) || person.role,
+  jobTitle: roleLabel,
+  description: stripHtml(person.bio) || roleLabel,
   worksFor: { "@type": "EducationalOrganization", name: "UPSCALE" },
   ...(person.photoUrl ? { image: person.photoUrl } : {}),
 };
 ---
 <Horizon
   title={`${person.name} · Instructor | UPSCALE`}
-  description={stripHtml(person.bio) || person.role || `${person.name} · Instructor`}
+  description={stripHtml(person.bio) || roleLabel || `${person.name} · Instructor`}
   jsonLd={jsonLd}
 >
   <div class="instructor-spread">
     <div class="instructor-copy">
-      {person.role ? <p class="kicker">{person.role}</p> : null}
+      {roleLabel ? <p class="kicker">{roleLabel}</p> : null}
       <div style="margin-bottom:1rem">
         <Avatar person={person} />
       </div>

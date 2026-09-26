@@ -1,15 +1,16 @@
 ---
 import Horizon from "../../layouts/Horizon.astro";
-import { getCatalog } from "../../lib/catalog";
+import { getCatalog, uniqueFaculty } from "../../lib/catalog";
 import { stripHtml } from "../../lib/rich";
 import Avatar from "../../components/Avatar.astro";
 
 const catalog = await getCatalog();
+const faculty = uniqueFaculty(catalog.instructors);
 const jsonLd = {
   "@context": "https://schema.org",
   "@type": "ItemList",
   name: "UPSCALE instructors",
-  itemListElement: catalog.instructors.map((i, n) => ({
+  itemListElement: faculty.map((i, n) => ({
     "@type": "ListItem",
     position: n + 1,
     url: `/instructors/${i.slug}`,
@@ -27,7 +28,7 @@ const jsonLd = {
   <p class="lede">Not a grid of stock portraits. A cast list — who teaches which track, and the proof they bring into the live session.</p>
   <ul class="cast">
     {
-      catalog.instructors.map((i) => (
+      faculty.map((i) => (
         <li>
           <a href={`/instructors/${i.slug}`}>
             <Avatar person={i} />

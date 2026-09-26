@@ -1,4 +1,4 @@
-import type { Catalog, Course, CourseSlug, LandingSettings } from "@upscale/shared";
+import type { Catalog, Course, CourseSlug, Instructor, LandingSettings } from "@upscale/shared";
 import { seedCatalog } from "@upscale/shared/seed";
 
 /** Browser-facing API (baked into register/payment scripts). Must be publicly reachable. */
@@ -54,6 +54,68 @@ export function courseOf(catalog: Catalog, slug: string) {
 
 export function instructorsOf(catalog: Catalog, course: Course) {
   return catalog.instructors.filter((i) => course.instructorIds.includes(i.id));
+}
+
+function normalizePersonName(name: string) {
+  return name
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+/** True when two instructor rows are the same person (shared photo or matching name). */
+export function sameInstructorPerson(a: Instructor, b: Instructor) {
+  if (a.id === b.id) return true;
+  if (a.photoUrl && b.photoUrl && a.photoUrl === b.photoUrl) return true;
+  const na = normalizePersonName(a.name);
+  const nb = normalizePersonName(b.name);
+  if (!na || !nb) return false;
+  if (na === nb) return true;
+  const [fa, ...ra] = na.split(" ");
+  const [fb, ...rb] = nb.split(" ");
+  if (fa !== fb) return false;
+  const la = ra.join(" ");
+  const lb = rb.join(" ");
+  if (!la || !lb) return true;
+  return la.startsWith(lb) || lb.startsWith(la) || la.includes(lb) || lb.includes(la);
+}
+
+export type FacultyMember = Instructor & { roles: string[] };
+
+/**
+ * One row per person for the faculty list — merges duplicate instructor records
+ * that teach multiple tracks (or were renamed to the same person in admin).
+ */
+export function uniqueFaculty(instructors: Instructor[]): FacultyMember[] {
+  const clusters: FacultyMember[] = [];
+  for (const person of instructors) {
+    const match = clusters.find((c) => sameInstructorPerson(c, person));
+    if (!match) {
+      clusters.push({
+        ...person,
+        roles: person.role ? [person.role] : [],
+        courseSlugs: [...person.courseSlugs],
+      });
+      continue;
+    }
+    if (person.role && !match.roles.includes(person.role)) match.roles.push(person.role);
+    match.courseSlugs = [...new Set([...match.courseSlugs, ...person.courseSlugs])] as CourseSlug[];
+    if (!match.photoUrl && person.photoUrl) match.photoUrl = person.photoUrl;
+    if ((person.name || "").length > (match.name || "").length) match.name = person.name;
+    if ((person.bio || "").length > (match.bio || "").length) match.bio = person.bio;
+    if ((person.initials || "").length > (match.initials || "").length) match.initials = person.initials;
+  }
+  return clusters.map((c) => ({
+    ...c,
+    role: c.roles.join(" · ") || c.role,
+  }));
+}
+
+/** All catalog rows that represent the same person as `person`. */
+export function peerInstructors(catalog: Catalog, person: Instructor) {
+  return catalog.instructors.filter((i) => sameInstructorPerson(i, person));
 }
 
 export function nextCohort(catalog: Catalog, slug: CourseSlug) {
