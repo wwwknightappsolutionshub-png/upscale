@@ -429,6 +429,10 @@ export const seedCatalog: Catalog = {
     scheduleTitle: "When we meet.",
     scheduleLede: "Live online in {timezone}. Recordings same day. Studio work still due.",
     scheduleSessionsLabel: "2×",
+    facultyKicker: "Faculty",
+    facultyTitle: "The room.",
+    facultyLede:
+      "Not a grid of stock portraits. A cast list — who teaches which track, and the proof they bring into the live session.",
     waysIn: [
       {
         mark: "switch",

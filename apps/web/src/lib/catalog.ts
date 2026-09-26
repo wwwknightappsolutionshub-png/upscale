@@ -26,6 +26,9 @@ function withSettingsDefaults(catalog: Catalog): Catalog {
       scheduleLede: String(raw.scheduleLede || defaults.scheduleLede).trim() || defaults.scheduleLede,
       scheduleSessionsLabel:
         String(raw.scheduleSessionsLabel || defaults.scheduleSessionsLabel).trim() || defaults.scheduleSessionsLabel,
+      facultyKicker: String(raw.facultyKicker || defaults.facultyKicker).trim() || defaults.facultyKicker,
+      facultyTitle: String(raw.facultyTitle || defaults.facultyTitle).trim() || defaults.facultyTitle,
+      facultyLede: String(raw.facultyLede || defaults.facultyLede).trim() || defaults.facultyLede,
       waysIn: Array.isArray(raw.waysIn) && raw.waysIn.length ? raw.waysIn : defaults.waysIn,
       whatsapp: raw.whatsapp || defaults.whatsapp,
     },

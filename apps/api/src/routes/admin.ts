@@ -628,6 +628,21 @@ adminRoutes.post("/courses/:id", async (c) => {
 adminRoutes.get("/instructors", async (c) => {
   const admin = c.get("admin");
   const catalog = await loadCatalog();
+  const s = catalog.settings;
+  const canEditPage = canManageSiteContent(roleOf(admin));
+  const webOrigin = process.env.WEB_ORIGIN?.split(",")[0] || "https://upscalecohort.com";
+  const pageCopyForm = canEditPage
+    ? `<form method="post" action="/admin/instructors/page" class="stack cardish" style="margin-bottom:1.25rem">
+        <h2>Instructors page copy</h2>
+        <p class="note">Header on the public <a href="${esc(webOrigin)}/instructors" target="_blank" rel="noopener">/instructors</a> page (“The room.”).</p>
+        <div class="form-grid">
+          <label>Kicker<input name="facultyKicker" value="${esc(s.facultyKicker)}" required maxlength="40" /></label>
+          <label>Headline<input name="facultyTitle" value="${esc(s.facultyTitle)}" required maxlength="80" /></label>
+        </div>
+        <label class="full">Supporting line<textarea name="facultyLede" rows="3" required maxlength="400">${esc(s.facultyLede)}</textarea></label>
+        ${formActions("Save page copy")}
+      </form>`
+    : "";
   const instructorForms = catalog.instructors
     .map((i) => {
       const photo = i.photoUrl
@@ -658,8 +673,11 @@ adminRoutes.get("/instructors", async (c) => {
     .join("");
   return c.html(
     desk(admin, "Instructors", `
-      ${pageHead("Instructors", "Update instructor names, roles, bios, and photos shown on the public site. Role, bio, and photo can be left empty.")}
+      ${pageHead("Instructors", "Edit the public /instructors page header, then each person’s name, role, bio, and photo.")}
       ${flashBanner(c)}
+      ${pageCopyForm}
+      <h2>People</h2>
+      <p class="note">Role, bio, and photo can be left empty. People teaching multiple tracks appear once on the public list.</p>
       <div class="instructor-grid">
       ${instructorForms}
       </div>
@@ -669,6 +687,24 @@ adminRoutes.get("/instructors", async (c) => {
       )}
     `, "/admin/instructors"),
   );
+});
+
+adminRoutes.post("/instructors/page", async (c) => {
+  const admin = c.get("admin");
+  if (!canManageSiteContent(roleOf(admin))) return forbid(c, admin, "Only admins can edit instructors page copy.");
+  const body = await c.req.parseBody();
+  const current = await loadCatalog();
+  const next: LandingSettings = {
+    ...current.settings,
+    facultyKicker: String(body.facultyKicker || "").trim() || "Faculty",
+    facultyTitle: String(body.facultyTitle || "").trim() || "The room.",
+    facultyLede:
+      String(body.facultyLede || "").trim() ||
+      "Not a grid of stock portraits. A cast list — who teaches which track, and the proof they bring into the live session.",
+  };
+  await db.update(settings).set({ json: JSON.stringify(next) }).where(eq(settings.id, "main"));
+  await audit(admin.email, "faculty_page_update", "settings", "main");
+  return c.redirect(await publishAndRedirect("/admin/instructors"));
 });
 
 adminRoutes.get("/instructors/:id/photo", async (c) => {

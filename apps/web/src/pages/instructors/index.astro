@@ -6,6 +6,7 @@ import Avatar from "../../components/Avatar.astro";
 
 const catalog = await getCatalog();
 const faculty = uniqueFaculty(catalog.instructors);
+const s = catalog.settings;
 const jsonLd = {
   "@context": "https://schema.org",
   "@type": "ItemList",
@@ -20,12 +21,12 @@ const jsonLd = {
 ---
 <Horizon
   title="Instructors · UPSCALE"
-  description="The people who run UPSCALE’s virtual studios — design, UI/UX, photo, video, front-end, backend, and full stack."
+  description={s.facultyLede || "The people who run UPSCALE’s virtual studios — design, UI/UX, photo, video, front-end, backend, and full stack."}
   jsonLd={jsonLd}
 >
-  <p class="kicker">Faculty</p>
-  <h1 class="display">The room.</h1>
-  <p class="lede">Not a grid of stock portraits. A cast list — who teaches which track, and the proof they bring into the live session.</p>
+  <p class="kicker">{s.facultyKicker}</p>
+  <h1 class="display">{s.facultyTitle}</h1>
+  <p class="lede">{s.facultyLede}</p>
   <ul class="cast">
     {
       faculty.map((i) => (

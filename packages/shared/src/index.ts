@@ -203,6 +203,12 @@ export type LandingSettings = {
   scheduleLede: string;
   /** Legend value for sessions per week (e.g. 2×). */
   scheduleSessionsLabel: string;
+  /** Public /instructors page kicker (e.g. Faculty). */
+  facultyKicker: string;
+  /** Public /instructors page headline (e.g. The room.). */
+  facultyTitle: string;
+  /** Public /instructors page supporting line. */
+  facultyLede: string;
 };
 
 export type Catalog = {
