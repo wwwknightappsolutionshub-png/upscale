@@ -638,6 +638,25 @@ fieldset.ways-card legend {
   gap: 0.45rem;
 }
 .outline-week-num { width: 4.5rem; }
+.faq-editor { display: grid; gap: 1rem; max-width: 100%; min-width: 0; }
+.faq-editor-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+.faq-editor-head h3 { margin: 0 0 0.25rem; font-size: 1rem; }
+.faq-items { display: grid; gap: 0.85rem; }
+.faq-item-card { padding: 1rem; }
+.faq-item-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+.faq-item-head h4 { margin: 0; font-size: 0.95rem; }
 /* Mid widths: keep sidebar, but stack dense layouts so content never clips. */
 @media (max-width: 1200px) {
   .split { grid-template-columns: 1fr; }

@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { desc, eq } from "drizzle-orm";
 import { Hono } from "hono";
-import type { CourseSlug, LandingSettings, WaysInItem, WeekBlock } from "@upscale/shared";
+import type { CourseFaq, CourseSlug, LandingSettings, WaysInItem, WeekBlock } from "@upscale/shared";
 import { formatFeeLabel, formatMoney, isNigeria, WAYS_IN_MARKS } from "@upscale/shared";
 import { seedCatalog } from "@upscale/shared/seed";
 import { db } from "../db/client.ts";
@@ -32,6 +32,7 @@ import { safeJoinUpload, saveInstructorPhoto, mimeFromUploadKey } from "../lib/s
 import { adminCss } from "../admin/styles.ts";
 import { registrationEmailEditorPage } from "../admin/emails-page.ts";
 import { layout, loginPage, pageHead, roleLabel } from "../admin/html.ts";
+import { faqEditorBoot, faqEditorHtml } from "../admin/faq-editor.ts";
 import { outlineEditorBoot, outlineEditorHtml } from "../admin/outline-editor.ts";
 import { richEditorBoot, textareaValue } from "../admin/rich-editor.ts";
 import {
@@ -536,6 +537,18 @@ adminRoutes.get("/courses/:id", async (c) => {
   const catalog = await loadCatalog();
   const openCohort = nextCohort(catalog, row.slug as CourseSlug);
   const outline = JSON.parse(row.outlineJson) as WeekBlock[];
+  let faqs: CourseFaq[] = [];
+  try {
+    const parsed = JSON.parse(row.faqJson || "[]");
+    faqs = Array.isArray(parsed)
+      ? parsed
+          .filter((f): f is CourseFaq => f && typeof f === "object" && typeof (f as CourseFaq).q === "string")
+          .map((f) => ({ q: String(f.q || "").trim(), a: String(f.a || "").trim() }))
+          .filter((f) => f.q || f.a)
+      : [];
+  } catch {
+    faqs = [];
+  }
   return c.html(
     desk(admin, row.name, `
       ${pageHead(esc(row.name), "Update what appears on the public course page.")}
@@ -559,6 +572,7 @@ adminRoutes.get("/courses/:id", async (c) => {
         <label class="full">Tools (one per line)<textarea name="tools" rows="4">${esc(JSON.parse(row.toolsJson).join("\n"))}</textarea></label>
         <label class="full">Prerequisites<textarea id="course-prerequisites" name="prerequisites" rows="4">${textareaValue(row.prerequisites)}</textarea></label>
         <label class="full">OG description<textarea name="ogDescription" rows="3">${esc(row.ogDescription)}</textarea></label>
+        ${faqEditorHtml(faqs)}
         ${outlineEditorHtml(outline)}
         ${formActions("Save course")}
       </form>
@@ -570,6 +584,7 @@ adminRoutes.get("/courses/:id", async (c) => {
         ],
         ["course-form"],
       )}
+      ${faqEditorBoot()}
       ${outlineEditorBoot()}
     `, "/admin/courses"),
   );
@@ -587,6 +602,21 @@ adminRoutes.post("/courses/:id", async (c) => {
     JSON.parse(outlineJson);
   } catch {
     return c.text("Outline JSON is not valid", 400);
+  }
+  let faqJson = row.faqJson;
+  try {
+    const parsed = JSON.parse(String(body.faqJson ?? row.faqJson ?? "[]"));
+    if (!Array.isArray(parsed)) return c.text("Course FAQ must be a list of questions.", 400);
+    const faqs: CourseFaq[] = parsed
+      .filter((f): f is CourseFaq => f && typeof f === "object")
+      .map((f) => ({
+        q: String((f as CourseFaq).q || "").trim().slice(0, 240),
+        a: String((f as CourseFaq).a || "").trim().slice(0, 800),
+      }))
+      .filter((f) => f.q && f.a);
+    faqJson = JSON.stringify(faqs);
+  } catch {
+    return c.text("Course FAQ JSON is not valid", 400);
   }
   const price = Number(body.price);
   const currency = String(body.currency || "USD");
@@ -607,6 +637,7 @@ adminRoutes.post("/courses/:id", async (c) => {
       toolsJson: JSON.stringify(String(body.tools || "").split("\n").map((x) => x.trim()).filter(Boolean)),
       prerequisites: String(body.prerequisites || ""),
       ogDescription: String(body.ogDescription || ""),
+      faqJson,
       outlineJson,
     })
     .where(eq(courses.id, id));
