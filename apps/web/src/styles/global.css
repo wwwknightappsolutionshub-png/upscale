@@ -111,9 +111,9 @@ button, input, select, textarea { font: inherit; }
 }
 .site-bar .brand { min-width: 0; }
 .site-bar .brand__logo {
-  width: auto;
-  height: 2.55rem;
-  max-width: min(14.5rem, 62vw);
+  width: min(20.5rem, 78vw);
+  height: auto;
+  max-width: 100%;
 }
 .menu-btn {
   display: inline-flex;
