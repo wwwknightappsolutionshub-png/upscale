@@ -44,7 +44,7 @@
   --muted: #3d3d3d;
   --paper: #f6f3ee;
   --white: #ffffff;
-  --rail: 17.5rem;
+  --rail: 23rem;
   --dock: 4.75rem;
   --seam: 1px;
   --stage-pad-x: 1.1rem;
@@ -220,7 +220,7 @@ body.nav-open .rail {
 .brand__logo {
   display: block;
   width: auto;
-  height: 3.35rem;
+  height: auto;
   max-width: 100%;
   object-fit: contain;
   background: transparent;
@@ -1346,10 +1346,14 @@ img.avatar {
     flex-direction: column;
     padding: 1.4rem 1.2rem 5.5rem;
   }
-  .rail-brand { display: flex; }
+  .rail-brand {
+    display: flex;
+    width: 100%;
+  }
   .rail-brand .brand__logo {
-    height: 3.6rem;
-    max-width: 100%;
+    width: 100%;
+    max-width: 20.5rem;
+    height: auto;
   }
   .rail-courses {
     flex-direction: column;
@@ -1657,7 +1661,7 @@ img.avatar {
 @media (min-width: 1400px) {
   :root {
     --stage-max: 80rem;
-    --rail: 18.75rem;
+    --rail: 24rem;
   }
 }
 @media (hover: none) {
