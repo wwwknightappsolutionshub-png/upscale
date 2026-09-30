@@ -56,6 +56,13 @@ export async function loadCatalog(): Promise<Catalog> {
       facultyKicker: String(parsedSettings.facultyKicker || defaults.facultyKicker).trim() || defaults.facultyKicker,
       facultyTitle: String(parsedSettings.facultyTitle || defaults.facultyTitle).trim() || defaults.facultyTitle,
       facultyLede: String(parsedSettings.facultyLede || defaults.facultyLede).trim() || defaults.facultyLede,
+      logoUrl: parsedSettings.logoUrl ? String(parsedSettings.logoUrl).trim() || null : null,
+      heroMarkBlueUrl: parsedSettings.heroMarkBlueUrl
+        ? String(parsedSettings.heroMarkBlueUrl).trim() || null
+        : null,
+      heroMarkRedUrl: parsedSettings.heroMarkRedUrl
+        ? String(parsedSettings.heroMarkRedUrl).trim() || null
+        : null,
       waysIn: normalizeWaysIn(parsedSettings.waysIn),
     },
     courses: courseRows.map(rowToCourse),

@@ -24,11 +24,12 @@ const cohort = course ? nextCohort(catalog, course.slug) : undefined;
 const open = catalog.settings.registrationOpen && course?.registrationOpen;
 const whatsappDigits = (catalog.settings.whatsapp || "+2348030599638").replace(/\D/g, "");
 const whatsappHref = `https://wa.me/${whatsappDigits}`;
+const logoSrc = catalog.settings.logoUrl || "/brand/upscale-logo.png";
 ---
 <!doctype html>
 <html lang="en">
   <head>
-    <Seo title={title} description={description} noindex={noindex} jsonLd={jsonLd} />
+    <Seo title={title} description={description} noindex={noindex} jsonLd={jsonLd} ogImage={logoSrc} />
   </head>
   <body>
     <a class="skip" href="#stage">Skip to content</a>
@@ -36,7 +37,7 @@ const whatsappHref = `https://wa.me/${whatsappDigits}`;
       <a class="brand" href="/" aria-label="UPSCALE home">
         <img
           class="brand__logo"
-          src="/brand/upscale-logo.png"
+          src={logoSrc}
           width="553"
           height="224"
           alt="UPSCALE — Learn Today, Build Tomorrow."
@@ -63,7 +64,7 @@ const whatsappHref = `https://wa.me/${whatsappDigits}`;
         <a class="brand rail-brand" href="/" aria-label="UPSCALE home">
           <img
             class="brand__logo"
-            src="/brand/upscale-logo.png"
+            src={logoSrc}
             width="553"
             height="224"
             alt="UPSCALE — Learn Today, Build Tomorrow."

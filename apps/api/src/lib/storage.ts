@@ -30,6 +30,13 @@ export function instructorPhotoPublicUrl(photoKey: string | null | undefined) {
   return `/media/instructors/${basename(photoKey)}`;
 }
 
+export type BrandSlot = "logo" | "hero-blue" | "hero-red";
+
+export function brandAssetPublicUrl(fileKey: string | null | undefined) {
+  if (!fileKey) return null;
+  return `/media/brand/${basename(fileKey)}`;
+}
+
 export function mimeFromUploadKey(fileKey: string) {
   const ext = extname(fileKey).toLowerCase();
   if (ext === ".jpg" || ext === ".jpeg") return "image/jpeg";
@@ -75,9 +82,37 @@ export async function saveInstructorPhoto(file: File, instructorId: string) {
   return { fileKey, mime: file.type || mimeFromUploadKey(fileKey), size: file.size };
 }
 
+export async function saveBrandAsset(file: File, slot: BrandSlot) {
+  const ext = imageExtFor(file);
+  if (!ext) {
+    throw new Error("Brand image must be JPG, PNG, or WebP.");
+  }
+  if (file.size > 5 * 1024 * 1024) {
+    throw new Error("Brand image is larger than 5 MB.");
+  }
+  const dir = resolve(uploadRoot(), "brand");
+  await mkdir(dir, { recursive: true });
+  const name = `${slot}-${nid("br")}${ext}`;
+  const buf = Buffer.from(await file.arrayBuffer());
+  await writeFile(resolve(dir, name), buf);
+  const fileKey = `brand/${name}`;
+  await copyBrandAssetToSite(fileKey);
+  return {
+    fileKey,
+    publicUrl: brandAssetPublicUrl(fileKey)!,
+    mime: file.type || mimeFromUploadKey(fileKey),
+    size: file.size,
+  };
+}
+
 function sitePublicInstructorsDir() {
   const root = process.env.SITE_ROOT || resolve(process.cwd(), "../..");
   return resolve(root, "apps/web/public/media/instructors");
+}
+
+function sitePublicBrandDir() {
+  const root = process.env.SITE_ROOT || resolve(process.cwd(), "../..");
+  return resolve(root, "apps/web/public/media/brand");
 }
 
 export async function copyInstructorPhotoToSite(fileKey: string) {
@@ -86,9 +121,26 @@ export async function copyInstructorPhotoToSite(fileKey: string) {
   await copyFile(safeJoinUpload(fileKey), resolve(destDir, basename(fileKey)));
 }
 
+export async function copyBrandAssetToSite(fileKey: string) {
+  const destDir = sitePublicBrandDir();
+  await mkdir(destDir, { recursive: true });
+  await copyFile(safeJoinUpload(fileKey), resolve(destDir, basename(fileKey)));
+}
+
 export async function publishInstructorPhotos() {
   const srcDir = resolve(uploadRoot(), "instructors");
   const destDir = sitePublicInstructorsDir();
+  await mkdir(destDir, { recursive: true });
+  if (!existsSync(srcDir)) return;
+  for (const file of await readdir(srcDir)) {
+    if (!file || file.startsWith(".")) continue;
+    await copyFile(resolve(srcDir, file), resolve(destDir, file));
+  }
+}
+
+export async function publishBrandAssets() {
+  const srcDir = resolve(uploadRoot(), "brand");
+  const destDir = sitePublicBrandDir();
   await mkdir(destDir, { recursive: true });
   if (!existsSync(srcDir)) return;
   for (const file of await readdir(srcDir)) {

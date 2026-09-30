@@ -433,6 +433,9 @@ export const seedCatalog: Catalog = {
     facultyTitle: "The room.",
     facultyLede:
       "Not a grid of stock portraits. A cast list — who teaches which track, and the proof they bring into the live session.",
+    logoUrl: null,
+    heroMarkBlueUrl: null,
+    heroMarkRedUrl: null,
     waysIn: [
       {
         mark: "switch",

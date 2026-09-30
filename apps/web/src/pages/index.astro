@@ -42,6 +42,8 @@ function slabParts(title: string) {
 }
 const waysSlab = slabParts(waysInTitle);
 const tracksSlab = slabParts(tracksTitle);
+const heroBlueSrc = catalog.settings.heroMarkBlueUrl || "/brand/upscale-hero-mark-blue.png";
+const heroRedSrc = catalog.settings.heroMarkRedUrl || "/brand/upscale-hero-mark-red.png";
 ---
 <Horizon
   title="UPSCALE — learn today, build tomorrow"
@@ -72,7 +74,7 @@ const tracksSlab = slabParts(tracksTitle);
           <span class="hero-mark__exhaust" aria-hidden="true"></span>
           <img
             class="hero-mark__blue"
-            src="/brand/upscale-hero-mark-blue.png"
+            src={heroBlueSrc}
             alt=""
             width="500"
             height="500"
@@ -80,7 +82,7 @@ const tracksSlab = slabParts(tracksTitle);
           />
           <img
             class="hero-mark__red"
-            src="/brand/upscale-hero-mark-red.png"
+            src={heroRedSrc}
             alt=""
             width="500"
             height="500"

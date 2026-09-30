@@ -28,7 +28,7 @@ import {
   saveEmailTemplate,
 } from "../lib/email-templates.ts";
 import { hashPassword, sha256, verifyPassword } from "../lib/password.ts";
-import { safeJoinUpload, saveInstructorPhoto, mimeFromUploadKey } from "../lib/storage.ts";
+import { safeJoinUpload, saveBrandAsset, saveInstructorPhoto, mimeFromUploadKey } from "../lib/storage.ts";
 import { adminCss } from "../admin/styles.ts";
 import { registrationEmailEditorPage } from "../admin/emails-page.ts";
 import { layout, loginPage, pageHead, roleLabel } from "../admin/html.ts";
@@ -903,6 +903,9 @@ adminRoutes.get("/landing", async (c) => {
   if (!canManageSiteContent(roleOf(admin))) return forbid(c, admin, "Only admins can edit landing copy.");
   const catalog = await loadCatalog();
   const s = catalog.settings;
+  const logoPreview = s.logoUrl || "/brand/upscale-logo.png";
+  const heroBluePreview = s.heroMarkBlueUrl || "/brand/upscale-hero-mark-blue.png";
+  const heroRedPreview = s.heroMarkRedUrl || "/brand/upscale-hero-mark-red.png";
   const waysCards = [0, 1, 2].map((i) => {
     const card = s.waysIn[i] || seedCatalog.settings.waysIn[i];
     const markOptions = WAYS_IN_MARKS.map(
@@ -922,10 +925,33 @@ adminRoutes.get("/landing", async (c) => {
   }).join("");
   return c.html(
     desk(admin, "Landing", `
-      ${pageHead("Landing copy", "Site-wide messaging, Ways in, bank details, FAQs, and proof stats.")}
+      ${pageHead("Landing copy", "Site-wide messaging, brand images, Ways in, bank details, FAQs, and proof stats.")}
       ${flashBanner(c)}
       <div class="panel">
-      <form method="post" class="stack">
+      <form method="post" class="stack" enctype="multipart/form-data">
+        <h2>Brand images</h2>
+        <p class="note">Header logo and homepage hero marks. JPG, PNG, or WebP · max 5 MB. Leave a file empty to keep the current image. Reset restores the bundled default.</p>
+        <div class="brand-upload-grid">
+          <div class="cardish brand-upload">
+            <p class="sub">Site logo (header + share image)</p>
+            <img class="brand-preview brand-preview--logo" src="${esc(logoPreview)}" alt="Current site logo" />
+            <label>Upload logo<input type="file" name="logo" accept="image/jpeg,image/png,image/webp" /></label>
+            ${s.logoUrl ? `<label class="check"><input type="checkbox" name="removeLogo" /> Reset to default logo</label>` : ""}
+          </div>
+          <div class="cardish brand-upload">
+            <p class="sub">Hero mark · blue</p>
+            <img class="brand-preview" src="${esc(heroBluePreview)}" alt="Current blue hero mark" />
+            <label>Upload blue mark<input type="file" name="heroBlue" accept="image/jpeg,image/png,image/webp" /></label>
+            ${s.heroMarkBlueUrl ? `<label class="check"><input type="checkbox" name="removeHeroBlue" /> Reset blue mark</label>` : ""}
+          </div>
+          <div class="cardish brand-upload">
+            <p class="sub">Hero mark · red</p>
+            <img class="brand-preview" src="${esc(heroRedPreview)}" alt="Current red hero mark" />
+            <label>Upload red mark<input type="file" name="heroRed" accept="image/jpeg,image/png,image/webp" /></label>
+            ${s.heroMarkRedUrl ? `<label class="check"><input type="checkbox" name="removeHeroRed" /> Reset red mark</label>` : ""}
+          </div>
+        </div>
+
         <div class="form-grid">
           <label>Tagline<input name="tagline" value="${esc(s.tagline)}" required /></label>
           <label>Contact email<input name="email" value="${esc(s.email)}" required /></label>
@@ -977,7 +1003,7 @@ adminRoutes.get("/landing", async (c) => {
 adminRoutes.post("/landing", async (c) => {
   const admin = c.get("admin");
   if (!canManageSiteContent(roleOf(admin))) return forbid(c, admin, "Only admins can edit landing copy.");
-  const body = await c.req.parseBody();
+  const body = await c.req.parseBody({ all: true });
   let faqs;
   let proof;
   try {
@@ -1001,6 +1027,28 @@ adminRoutes.post("/landing", async (c) => {
     return c.text("Each Ways in card needs a title and copy.", 400);
   }
   const current = await loadCatalog();
+  let logoUrl = current.settings.logoUrl;
+  let heroMarkBlueUrl = current.settings.heroMarkBlueUrl;
+  let heroMarkRedUrl = current.settings.heroMarkRedUrl;
+  if (body.removeLogo) logoUrl = null;
+  if (body.removeHeroBlue) heroMarkBlueUrl = null;
+  if (body.removeHeroRed) heroMarkRedUrl = null;
+  try {
+    const logo = body.logo;
+    if (logo instanceof File && logo.size > 0) {
+      logoUrl = (await saveBrandAsset(logo, "logo")).publicUrl;
+    }
+    const heroBlue = body.heroBlue;
+    if (heroBlue instanceof File && heroBlue.size > 0) {
+      heroMarkBlueUrl = (await saveBrandAsset(heroBlue, "hero-blue")).publicUrl;
+    }
+    const heroRed = body.heroRed;
+    if (heroRed instanceof File && heroRed.size > 0) {
+      heroMarkRedUrl = (await saveBrandAsset(heroRed, "hero-red")).publicUrl;
+    }
+  } catch (err) {
+    return c.text(err instanceof Error ? err.message : "Could not save brand image.", 400);
+  }
   const next: LandingSettings = {
     ...current.settings,
     tagline: String(body.tagline),
@@ -1013,6 +1061,9 @@ adminRoutes.post("/landing", async (c) => {
     waysInTitle: String(body.waysInTitle || "Ways in").trim() || "Ways in",
     tracksTitle: String(body.tracksTitle || "The tracks").trim() || "The tracks",
     waysIn,
+    logoUrl,
+    heroMarkBlueUrl,
+    heroMarkRedUrl,
     bank: {
       bankName: String(body.bankName),
       accountName: String(body.accountName),

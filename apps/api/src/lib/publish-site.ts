@@ -2,7 +2,7 @@ import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { ensureCatalogAdditions } from "../db/seed.ts";
-import { publishInstructorPhotos } from "./storage.ts";
+import { publishBrandAssets, publishInstructorPhotos } from "./storage.ts";
 
 export type PublishResult = { ok: boolean; message: string };
 
@@ -46,6 +46,7 @@ export async function publishSite(): Promise<PublishResult> {
   };
 
   await publishInstructorPhotos().catch(() => undefined);
+  await publishBrandAssets().catch(() => undefined);
 
   return new Promise<PublishResult>((done) => {
     const child = spawn("npm", ["run", "build"], {

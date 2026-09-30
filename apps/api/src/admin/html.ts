@@ -657,6 +657,22 @@ fieldset.ways-card legend {
   margin-bottom: 0.75rem;
 }
 .faq-item-head h4 { margin: 0; font-size: 0.95rem; }
+.brand-upload-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
+  margin-bottom: 0.5rem;
+}
+.brand-upload { padding: 1rem; display: grid; gap: 0.75rem; }
+.brand-preview {
+  width: 100%;
+  max-height: 140px;
+  object-fit: contain;
+  background: #0b1220;
+  border-radius: 8px;
+  padding: 0.75rem;
+}
+.brand-preview--logo { background: #f4f6f8; }
 /* Mid widths: keep sidebar, but stack dense layouts so content never clips. */
 @media (max-width: 1200px) {
   .split { grid-template-columns: 1fr; }

@@ -209,6 +209,12 @@ export type LandingSettings = {
   facultyTitle: string;
   /** Public /instructors page supporting line. */
   facultyLede: string;
+  /** Header/rail logo URL (e.g. /media/brand/…). Null uses the bundled default. */
+  logoUrl: string | null;
+  /** Homepage hero mark (blue layer). Null uses the bundled default. */
+  heroMarkBlueUrl: string | null;
+  /** Homepage hero mark (red layer). Null uses the bundled default. */
+  heroMarkRedUrl: string | null;
 };
 
 export type Catalog = {
