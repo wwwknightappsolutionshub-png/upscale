@@ -1,4 +1,4 @@
-import { copyFile, mkdir, readdir, writeFile } from "node:fs/promises";
+import { copyFile, mkdir, readdir, rm, writeFile } from "node:fs/promises";
 import { basename, extname, resolve } from "node:path";
 import { existsSync } from "node:fs";
 import { nid } from "./ids.ts";
@@ -157,4 +157,15 @@ export function safeJoinUpload(fileKey: string) {
   }
   if (!extname(resolved)) throw new Error("Invalid file key");
   return resolved;
+}
+
+/** Remove a student's evidence upload folder (uploads/{studentId}/). */
+export async function removeStudentUploadDir(studentId: string) {
+  const id = String(studentId || "").trim();
+  if (!id || id.includes("..") || id.includes("/") || id.includes("\\")) return;
+  const dir = resolve(uploadRoot(), id);
+  const root = uploadRoot();
+  if (!dir.startsWith(root) || dir === root) return;
+  if (!existsSync(dir)) return;
+  await rm(dir, { recursive: true, force: true });
 }

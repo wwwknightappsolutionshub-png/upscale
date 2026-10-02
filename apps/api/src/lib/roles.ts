@@ -32,6 +32,11 @@ export function canReviewEvidence(role: AdminRole) {
   return role === "super_admin" || role === "admin" || role === "editor";
 }
 
+/** Permanent student wipe — admins only (not editors). */
+export function canDeleteStudents(role: AdminRole) {
+  return role === "super_admin" || role === "admin";
+}
+
 export function canViewAudit(role: AdminRole) {
   return role === "super_admin" || role === "admin";
 }

@@ -28,7 +28,7 @@ import {
   saveEmailTemplate,
 } from "../lib/email-templates.ts";
 import { hashPassword, sha256, verifyPassword } from "../lib/password.ts";
-import { safeJoinUpload, saveBrandAsset, saveInstructorPhoto, mimeFromUploadKey } from "../lib/storage.ts";
+import { safeJoinUpload, saveBrandAsset, saveInstructorPhoto, mimeFromUploadKey, removeStudentUploadDir } from "../lib/storage.ts";
 import { adminCss } from "../admin/styles.ts";
 import { registrationEmailEditorPage } from "../admin/emails-page.ts";
 import { layout, loginPage, pageHead, roleLabel } from "../admin/html.ts";
@@ -36,6 +36,7 @@ import { faqEditorBoot, faqEditorHtml } from "../admin/faq-editor.ts";
 import { outlineEditorBoot, outlineEditorHtml } from "../admin/outline-editor.ts";
 import { richEditorBoot, textareaValue } from "../admin/rich-editor.ts";
 import {
+  canDeleteStudents,
   canEditInstructors,
   canManageEmailTemplates,
   canManageSiteContent,
@@ -98,9 +99,13 @@ function flashBanner(c: { req: { query: (k: string) => string | undefined } }) {
   const saved = c.req.query("saved");
   const published = c.req.query("published");
   const publishError = c.req.query("publishError");
+  const deleted = c.req.query("deleted");
   const ok = c.req.query("ok");
   if (publishError) {
     return `<p class="banner bad">${esc(publishError)}</p>`;
+  }
+  if (deleted === "1") {
+    return `<p class="banner ok">Student deleted permanently from the database.</p>`;
   }
   if (published === "1") {
     return `<p class="banner ok">Saved and published to the public site.</p>`;
@@ -207,6 +212,7 @@ adminRoutes.get("/students", async (c) => {
   return c.html(
     desk(admin, "Students", `
       ${pageHead("Students", "Filter by status or export the full list.")}
+      ${flashBanner(c)}
       <div class="toolbar">
         <form class="filters" method="get">
           <select name="status" onchange="this.form.submit()">
@@ -329,6 +335,16 @@ adminRoutes.get("/students/:id", async (c) => {
   const files = await db.select().from(paymentEvidence).where(eq(paymentEvidence.studentId, id));
   const catalog = await loadCatalog();
   const course = catalog.courses.find((x) => x.slug === student.courseSlug);
+  const canDelete = canDeleteStudents(roleOf(admin));
+  const deleteBlock = canDelete
+    ? `<section class="panel danger-zone" style="margin-top:1.5rem">
+        <h2>Delete student</h2>
+        <p class="note">Permanently removes this registrant, payment evidence rows, and uploaded receipts from the database and disk. If they were enrolled, one seat is released on their cohort. This cannot be undone.</p>
+        <form method="post" action="/admin/students/${esc(student.id)}/delete" data-confirm="Delete ${esc(student.name)} permanently? This cannot be undone." onsubmit="return confirm(this.getAttribute('data-confirm'));">
+          <button type="submit" class="danger">Delete student permanently</button>
+        </form>
+      </section>`
+    : "";
   return c.html(
     desk(admin, student.name, `
       ${pageHead(esc(student.name), `${esc(student.email)} · ${esc(student.phone)} · ${esc(student.country || "—")}${student.state ? `, ${esc(student.state)}` : ""}${student.city ? `, ${esc(student.city)}` : ""}`)}
@@ -350,8 +366,37 @@ adminRoutes.get("/students/:id", async (c) => {
           </article>`,
         )
         .join("") || "<p>No files yet.</p>"}
+      ${deleteBlock}
     `, "/admin/students"),
   );
+});
+
+adminRoutes.post("/students/:id/delete", async (c) => {
+  const admin = c.get("admin");
+  if (!canDeleteStudents(roleOf(admin))) return forbid(c, admin, "Only admins can delete students.");
+  const id = c.req.param("id");
+  const student = (await db.select().from(students).where(eq(students.id, id)).limit(1))[0];
+  if (!student) return c.text("Not found", 404);
+
+  const evidence = await db.select().from(paymentEvidence).where(eq(paymentEvidence.studentId, id));
+  await db.delete(paymentEvidence).where(eq(paymentEvidence.studentId, id));
+  await db.delete(students).where(eq(students.id, id));
+
+  if (student.status === "enrolled" && student.cohortId) {
+    const cohort = (await db.select().from(cohorts).where(eq(cohorts.id, student.cohortId)).limit(1))[0];
+    if (cohort && cohort.seatsTaken > 0) {
+      await db.update(cohorts).set({ seatsTaken: cohort.seatsTaken - 1 }).where(eq(cohorts.id, cohort.id));
+    }
+  }
+
+  await removeStudentUploadDir(id).catch(() => undefined);
+  await audit(admin.email, "student_delete", "student", id, {
+    name: student.name,
+    email: student.email,
+    status: student.status,
+    evidenceCount: evidence.length,
+  });
+  return c.redirect("/admin/students?deleted=1");
 });
 
 adminRoutes.get("/evidence", async (c) => {
@@ -1247,7 +1292,7 @@ adminRoutes.get("/team", async (c) => {
       </div>
       <p class="sub" style="margin-top:1rem">
         <strong>Super admin</strong> — full access, including team management.<br />
-        <strong>Admin</strong> — manage courses, cohorts, landing, evidence, and instructors.<br />
+        <strong>Admin</strong> — manage courses, cohorts, landing, evidence, instructors, and delete students.<br />
         <strong>Editor</strong> — review evidence and edit instructors only.
       </p>
     `,
