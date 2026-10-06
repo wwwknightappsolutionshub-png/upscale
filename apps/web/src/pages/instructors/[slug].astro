@@ -16,12 +16,18 @@ const raw = catalog.instructors.find((i) => i.slug === Astro.params.slug);
 if (!raw) return Astro.redirect("/instructors");
 
 const peers = peerInstructors(catalog, raw);
-const person = uniqueFaculty(peers)[0] || { ...raw, roles: raw.role ? [raw.role] : [] };
-
-// Prefer one canonical URL per person (first row in the merged cluster).
-if (person.slug && person.slug !== Astro.params.slug) {
-  return Astro.redirect(`/instructors/${person.slug}`);
-}
+const merged = uniqueFaculty(peers)[0] || { ...raw, roles: raw.role ? [raw.role] : [] };
+// This URL's row wins for identity fields so desk edits always show after publish.
+const person = {
+  ...merged,
+  id: raw.id,
+  slug: raw.slug,
+  name: raw.name,
+  bio: raw.bio,
+  initials: raw.initials,
+  photoUrl: raw.photoUrl || merged.photoUrl,
+  accent: raw.accent || merged.accent,
+};
 
 const courseSlugs = new Set(peers.flatMap((p) => p.courseSlugs));
 const courses = catalog.courses.filter((c) => courseSlugs.has(c.slug));

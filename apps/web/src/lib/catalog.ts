@@ -109,9 +109,15 @@ export function uniqueFaculty(instructors: Instructor[]): FacultyMember[] {
     if (person.role && !match.roles.includes(person.role)) match.roles.push(person.role);
     match.courseSlugs = [...new Set([...match.courseSlugs, ...person.courseSlugs])] as CourseSlug[];
     if (!match.photoUrl && person.photoUrl) match.photoUrl = person.photoUrl;
-    if ((person.name || "").length > (match.name || "").length) match.name = person.name;
-    if ((person.bio || "").length > (match.bio || "").length) match.bio = person.bio;
-    if ((person.initials || "").length > (match.initials || "").length) match.initials = person.initials;
+    // Prefer the longer display name and keep that row's bio/initials with it
+    // (do not pick the longest bio alone — seed copy often wins over desk edits).
+    if ((person.name || "").length > (match.name || "").length) {
+      match.name = person.name;
+      match.bio = person.bio;
+      match.initials = person.initials || match.initials;
+      match.slug = person.slug || match.slug;
+      match.id = person.id;
+    }
   }
   return clusters.map((c) => ({
     ...c,

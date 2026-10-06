@@ -1306,7 +1306,14 @@ img.avatar {
   overflow: visible;
 }
 .instructor-copy .display {
-  font-size: clamp(2.4rem, 8vw, 5.2rem);
+  /* Fit long names on ≤2 lines — override global .display mid-word wrapping. */
+  font-size: clamp(1.55rem, 3.2vw + 0.85rem, 3.35rem);
+  line-height: 1.05;
+  overflow-wrap: normal;
+  word-break: normal;
+  hyphens: none;
+  text-wrap: balance;
+  max-width: 100%;
 }
 
 @media (min-width: 900px) {

@@ -155,18 +155,18 @@ async function migratePhotographyVideographySplit(): Promise<string[]> {
     changed.push(`students:${legacyStudents.length}`);
   }
 
-  // Keep Devon linked to both new tracks.
+  // Keep this instructor linked to both photo tracks — never overwrite desk-edited bio/name.
   const devon = seedCatalog.instructors.find((i) => i.id === "ins_devon");
   if (devon) {
     const row = (await db.select().from(instructors).where(eq(instructors.id, devon.id)).limit(1))[0];
     if (row) {
       const next = JSON.stringify(devon.courseSlugs);
-      if (row.courseSlugsJson !== next || row.bio !== devon.bio) {
+      if (row.courseSlugsJson !== next) {
         await db
           .update(instructors)
-          .set({ courseSlugsJson: next, bio: devon.bio })
+          .set({ courseSlugsJson: next })
           .where(eq(instructors.id, devon.id));
-        changed.push("devon-hart");
+        changed.push("devon-hart-courses");
       }
     }
   }

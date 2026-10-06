@@ -29,8 +29,15 @@ export function richEditorBoot(fields: RichField[], formIds: string[] = []) {
 
   const formHooks = formIds
     .map(
-      (id) => `document.getElementById(${JSON.stringify(id)})?.addEventListener("submit", () => {
-          if (window.tinymce) tinymce.triggerSave();
+      (id) => `document.getElementById(${JSON.stringify(id)})?.addEventListener("submit", (event) => {
+          const form = event.currentTarget;
+          if (!form || form.dataset.tinymceSaved === "1") return;
+          if (!window.tinymce) return;
+          event.preventDefault();
+          tinymce.triggerSave();
+          form.dataset.tinymceSaved = "1";
+          if (typeof form.requestSubmit === "function") form.requestSubmit();
+          else form.submit();
         });`,
     )
     .join("\n        ");
