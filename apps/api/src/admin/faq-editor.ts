@@ -13,7 +13,7 @@ function faqCard(item: CourseFaq, index: number) {
   return `<article class="faq-item-card cardish">
     <div class="faq-item-head">
       <h4>Question ${index + 1}</h4>
-      <button type="button" class="faq-item-remove ghost">Remove</button>
+      <button type="button" class="faq-item-remove">Remove</button>
     </div>
     <div class="form-grid">
       <label class="full">Question<input type="text" class="faq-item-q" value="${esc(item.q)}" maxlength="240" placeholder="e.g. Can beginners join?" /></label>
@@ -28,11 +28,14 @@ export function faqEditorHtml(faqs: CourseFaq[]) {
     <div class="faq-editor-head">
       <div>
         <h3>Course questions (FAQ)</h3>
-        <p class="note">Shown under “Course questions” on the public course page. Leave empty to hide the section. Remove a row to delete it.</p>
+        <p class="note">Shown under “Course questions” on the public course page. Add as many as you need. Leave empty to hide the section.</p>
       </div>
-      <button type="button" class="ghost" id="faq-add-item">Add question</button>
+      <button type="button" class="faq-add-item" id="faq-add-item">Add question</button>
     </div>
     <div class="faq-items" id="faq-items">${items}</div>
+    <div class="faq-editor-actions">
+      <button type="button" class="faq-add-item" id="faq-add-item-bottom">Add another question</button>
+    </div>
     <textarea name="faqJson" id="faq-json" hidden aria-hidden="true">${textareaValue(JSON.stringify(faqs, null, 2))}</textarea>
   </div>`;
 }
@@ -79,7 +82,7 @@ export function faqEditorBoot() {
         article.innerHTML =
           '<div class="faq-item-head">' +
           "<h4>Question</h4>" +
-          '<button type="button" class="faq-item-remove ghost">Remove</button>' +
+          '<button type="button" class="faq-item-remove">Remove</button>' +
           "</div>" +
           '<div class="form-grid">' +
           '<label class="full">Question<input type="text" class="faq-item-q" value="" maxlength="240" placeholder="e.g. Can beginners join?" /></label>' +
@@ -94,6 +97,7 @@ export function faqEditorBoot() {
 
       list.querySelectorAll(".faq-item-card").forEach(bindCard);
       document.getElementById("faq-add-item")?.addEventListener("click", addItem);
+      document.getElementById("faq-add-item-bottom")?.addEventListener("click", addItem);
       form.addEventListener("submit", syncJson);
       list.addEventListener("input", syncJson);
     })();

@@ -657,6 +657,34 @@ fieldset.ways-card legend {
   margin-bottom: 0.75rem;
 }
 .faq-item-head h4 { margin: 0; font-size: 0.95rem; }
+/* Light-panel controls — do not use button.ghost (white-on-white). */
+.faq-add-item {
+  background: var(--ink);
+  color: #fff;
+  border: 0;
+  padding: 0.65rem 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  width: fit-content;
+  border-radius: 2px;
+}
+.faq-add-item:hover { background: var(--blue); }
+.faq-editor-actions { display: flex; justify-content: flex-start; }
+.faq-item-remove {
+  background: transparent;
+  color: var(--ink);
+  border: 1px solid var(--line);
+  padding: 0.4rem 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  width: fit-content;
+  border-radius: 2px;
+}
+.faq-item-remove:hover {
+  background: #fff5f5;
+  color: var(--red);
+  border-color: var(--red);
+}
 .brand-upload-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
