@@ -1129,6 +1129,82 @@ adminRoutes.post("/landing", async (c) => {
   return c.redirect(await publishAndRedirect("/admin/landing"));
 });
 
+adminRoutes.get("/legal", async (c) => {
+  const admin = c.get("admin");
+  if (!canManageSiteContent(roleOf(admin))) return forbid(c, admin, "Only admins can edit legal pages.");
+  const catalog = await loadCatalog();
+  const s = catalog.settings;
+  const webOrigin = process.env.WEB_ORIGIN?.split(",")[0] || "https://upscalecohort.com";
+  return c.html(
+    desk(
+      admin,
+      "Legal",
+      `
+      ${pageHead("Legal pages", "Edit the public Privacy and Terms pages. Saves rebuild the live site.")}
+      ${flashBanner(c)}
+      <div class="panel">
+      <form id="legal-form" method="post" class="stack">
+        <section class="stack cardish">
+          <h2>Privacy policy</h2>
+          <p class="note">Public page: <a href="${esc(webOrigin)}/privacy" target="_blank" rel="noopener">/privacy</a>. Use <code>{{email}}</code> in the body to insert the support address (${esc(s.email)}).</p>
+          <div class="form-grid">
+            <label>Kicker<input name="privacyKicker" value="${esc(s.privacyKicker)}" required maxlength="40" /></label>
+            <label>Headline<input name="privacyTitle" value="${esc(s.privacyTitle)}" required maxlength="80" /></label>
+            <label class="full">Meta description<input name="privacyDescription" value="${esc(s.privacyDescription)}" required maxlength="200" /></label>
+          </div>
+          <label class="full">Body<textarea id="privacy-body" name="privacyBody" rows="12">${textareaValue(s.privacyBody)}</textarea></label>
+        </section>
+        <section class="stack cardish">
+          <h2>Terms and conditions</h2>
+          <p class="note">Public page: <a href="${esc(webOrigin)}/terms" target="_blank" rel="noopener">/terms</a>.</p>
+          <div class="form-grid">
+            <label>Kicker<input name="termsKicker" value="${esc(s.termsKicker)}" required maxlength="40" /></label>
+            <label>Headline<input name="termsTitle" value="${esc(s.termsTitle)}" required maxlength="80" /></label>
+            <label class="full">Meta description<input name="termsDescription" value="${esc(s.termsDescription)}" required maxlength="200" /></label>
+          </div>
+          <label class="full">Body<textarea id="terms-body" name="termsBody" rows="12">${textareaValue(s.termsBody)}</textarea></label>
+        </section>
+        ${formActions("Save legal pages")}
+      </form>
+      </div>
+      ${richEditorBoot(
+        [
+          { id: "privacy-body", height: 360 },
+          { id: "terms-body", height: 360 },
+        ],
+        ["legal-form"],
+      )}
+    `,
+      "/admin/legal",
+    ),
+  );
+});
+
+adminRoutes.post("/legal", async (c) => {
+  const admin = c.get("admin");
+  if (!canManageSiteContent(roleOf(admin))) return forbid(c, admin, "Only admins can edit legal pages.");
+  const body = await c.req.parseBody();
+  const current = await loadCatalog();
+  const privacyBody = String(body.privacyBody || "").trim().slice(0, 50000);
+  const termsBody = String(body.termsBody || "").trim().slice(0, 50000);
+  if (!privacyBody || !termsBody) return c.text("Privacy and Terms bodies are required.", 400);
+  const next: LandingSettings = {
+    ...current.settings,
+    privacyKicker: String(body.privacyKicker || "").trim().slice(0, 40) || current.settings.privacyKicker,
+    privacyTitle: String(body.privacyTitle || "").trim().slice(0, 80) || current.settings.privacyTitle,
+    privacyDescription:
+      String(body.privacyDescription || "").trim().slice(0, 200) || current.settings.privacyDescription,
+    privacyBody,
+    termsKicker: String(body.termsKicker || "").trim().slice(0, 40) || current.settings.termsKicker,
+    termsTitle: String(body.termsTitle || "").trim().slice(0, 80) || current.settings.termsTitle,
+    termsDescription: String(body.termsDescription || "").trim().slice(0, 200) || current.settings.termsDescription,
+    termsBody,
+  };
+  await db.update(settings).set({ json: JSON.stringify(next) }).where(eq(settings.id, "main"));
+  await audit(admin.email, "legal_update", "settings", "main");
+  return c.redirect(await publishAndRedirect("/admin/legal"));
+});
+
 adminRoutes.post("/publish", async (c) => {
   const admin = c.get("admin");
   if (!canManageSiteContent(roleOf(admin))) return forbid(c, admin, "Only admins can publish the site.");
@@ -1292,7 +1368,7 @@ adminRoutes.get("/team", async (c) => {
       </div>
       <p class="sub" style="margin-top:1rem">
         <strong>Super admin</strong> — full access, including team management.<br />
-        <strong>Admin</strong> — manage courses, cohorts, landing, evidence, instructors, and delete students.<br />
+        <strong>Admin</strong> — manage courses, cohorts, landing, legal pages, evidence, instructors, and delete students.<br />
         <strong>Editor</strong> — review evidence and edit instructors only.
       </p>
     `,

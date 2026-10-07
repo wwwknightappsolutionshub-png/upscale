@@ -44,7 +44,12 @@ export function canViewAudit(role: AdminRole) {
 export function navAllowed(href: string, role: AdminRole) {
   if (href === "/admin/emails") return canManageEmailTemplates(role);
   if (href === "/admin/team") return canManageTeam(role);
-  if (href === "/admin/courses" || href === "/admin/cohorts" || href === "/admin/landing") {
+  if (
+    href === "/admin/courses" ||
+    href === "/admin/cohorts" ||
+    href === "/admin/landing" ||
+    href === "/admin/legal"
+  ) {
     return canManageSiteContent(role);
   }
   if (href === "/admin/audit") return canViewAudit(role);

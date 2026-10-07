@@ -433,6 +433,20 @@ export const seedCatalog: Catalog = {
     facultyTitle: "The room.",
     facultyLede:
       "Not a grid of stock portraits. A cast list — who teaches which track, and the proof they bring into the live session.",
+    privacyKicker: "Legal",
+    privacyTitle: "Privacy.",
+    privacyDescription: "How UPSCALE stores registration data and payment evidence.",
+    privacyBody: `<p>UPSCALE (“we”) collects what we need to run a virtual cohort: your name, email, phone, optional city, course choice, motivation, and the payment evidence you upload.</p>
+<p>Payment receipts can contain account names and transaction ids. They are stored privately, viewed only by staff reviewing enrolment, and are not used for marketing.</p>
+<p>We keep student and evidence records for twelve months after the cohort ends, then delete files unless a lawful dispute requires a longer hold. Email {{email}} to ask for a copy or deletion of your registration, subject to that hold.</p>
+<p>The public site is informational. Registration and upload traffic goes to our API. We log request time and a coarse network address to rate-limit abuse.</p>`,
+    termsKicker: "Legal",
+    termsTitle: "Terms.",
+    termsDescription: "Terms for registering and paying for UPSCALE virtual training.",
+    termsBody: `<p>Registering is a request for a seat, not a completed enrolment. Enrolment happens when staff verify your payment evidence and a seat is available. If the cohort is at cap after verification, you are waitlisted.</p>
+<p>You must use the issued reference on the transfer. Uploading someone else’s receipt, an edited image, or a file we cannot read is grounds for rejection.</p>
+<p>Sessions are virtual and live. Recordings are a courtesy for absence, not a substitute for the cohort. Capstone standards are set by instructors and must be met for a certificate.</p>
+<p>Fees, dates, and bank details are those published at the time of your confirmation email. We may close an intake if enrolment is too low; in that case verified payers are refunded or moved, in writing.</p>`,
     logoUrl: null,
     heroMarkBlueUrl: null,
     heroMarkRedUrl: null,

@@ -1292,7 +1292,9 @@ img.avatar {
 }
 
 .legal { max-width: 40rem; }
-.legal p { color: var(--muted); }
+.legal p,
+.legal .richtext { color: var(--muted); }
+.legal .richtext a { color: var(--blue-ink); }
 
 .instructor-spread {
   display: grid;

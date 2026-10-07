@@ -209,6 +209,22 @@ export type LandingSettings = {
   facultyTitle: string;
   /** Public /instructors page supporting line. */
   facultyLede: string;
+  /** Public /privacy page kicker (e.g. Legal). */
+  privacyKicker: string;
+  /** Public /privacy page headline (e.g. Privacy.). */
+  privacyTitle: string;
+  /** Meta description for /privacy. */
+  privacyDescription: string;
+  /** Rich HTML body for /privacy. Use {{email}} for the support address. */
+  privacyBody: string;
+  /** Public /terms page kicker (e.g. Legal). */
+  termsKicker: string;
+  /** Public /terms page headline (e.g. Terms.). */
+  termsTitle: string;
+  /** Meta description for /terms. */
+  termsDescription: string;
+  /** Rich HTML body for /terms. */
+  termsBody: string;
   /** Header/rail logo URL (e.g. /media/brand/…). Null uses the bundled default. */
   logoUrl: string | null;
   /** Homepage hero mark (blue layer). Null uses the bundled default. */

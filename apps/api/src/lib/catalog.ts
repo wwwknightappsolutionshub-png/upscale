@@ -56,6 +56,16 @@ export async function loadCatalog(): Promise<Catalog> {
       facultyKicker: String(parsedSettings.facultyKicker || defaults.facultyKicker).trim() || defaults.facultyKicker,
       facultyTitle: String(parsedSettings.facultyTitle || defaults.facultyTitle).trim() || defaults.facultyTitle,
       facultyLede: String(parsedSettings.facultyLede || defaults.facultyLede).trim() || defaults.facultyLede,
+      privacyKicker: String(parsedSettings.privacyKicker || defaults.privacyKicker).trim() || defaults.privacyKicker,
+      privacyTitle: String(parsedSettings.privacyTitle || defaults.privacyTitle).trim() || defaults.privacyTitle,
+      privacyDescription:
+        String(parsedSettings.privacyDescription || defaults.privacyDescription).trim() || defaults.privacyDescription,
+      privacyBody: String(parsedSettings.privacyBody || defaults.privacyBody).trim() || defaults.privacyBody,
+      termsKicker: String(parsedSettings.termsKicker || defaults.termsKicker).trim() || defaults.termsKicker,
+      termsTitle: String(parsedSettings.termsTitle || defaults.termsTitle).trim() || defaults.termsTitle,
+      termsDescription:
+        String(parsedSettings.termsDescription || defaults.termsDescription).trim() || defaults.termsDescription,
+      termsBody: String(parsedSettings.termsBody || defaults.termsBody).trim() || defaults.termsBody,
       logoUrl: parsedSettings.logoUrl ? String(parsedSettings.logoUrl).trim() || null : null,
       heroMarkBlueUrl: parsedSettings.heroMarkBlueUrl
         ? String(parsedSettings.heroMarkBlueUrl).trim() || null
