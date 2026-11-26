@@ -11,3 +11,10 @@ export function rateLimit(key: string, max: number, windowMs: number) {
   cur.n += 1;
   return true;
 }
+
+/** True when this key has already used its allowance. Does not count a new hit. */
+export function isRateLimited(key: string, max: number, windowMs: number) {
+  const cur = hits.get(key);
+  if (!cur || cur.reset < Date.now()) return false;
+  return cur.n >= max;
+}

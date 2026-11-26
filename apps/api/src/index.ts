@@ -10,6 +10,9 @@ import { describeMailTransport } from "./lib/mail.ts";
 import { adminRoutes } from "./routes/admin.ts";
 import { publicRoutes } from "./routes/public.ts";
 
+delete process.env.DEBUG;
+delete process.env.NODE_DEBUG;
+
 const app = new Hono();
 const webOrigins = (process.env.WEB_ORIGIN || "http://localhost:4321")
   .split(",")
@@ -37,6 +40,20 @@ function corsOrigin(origin: string | undefined) {
   }
 }
 
+app.use("*", async (c, next) => {
+  let path = c.req.path;
+  try {
+    path = decodeURIComponent(path);
+  } catch {
+    return c.text("Not found", 404);
+  }
+  if (path.split("/").some((part) => part.startsWith("."))) return c.text("Not found", 404);
+  await next();
+  c.res.headers.delete("X-Powered-By");
+  c.res.headers.delete("x-powered-by");
+  c.res.headers.delete("Server");
+  c.res.headers.delete("server");
+});
 app.use("*", secureHeaders());
 app.use(
   "/public/*",
@@ -46,13 +63,7 @@ app.use(
   }),
 );
 
-app.get("/health", (c) =>
-  c.json({
-    ok: true,
-    name: "UPSCALE",
-    mail: describeMailTransport(),
-  }),
-);
+app.get("/health", (c) => c.json({ ok: true }));
 app.use("/fonts/*", serveStatic({ root: "./public" }));
 app.route("/public", publicRoutes);
 app.route("/admin", adminRoutes);

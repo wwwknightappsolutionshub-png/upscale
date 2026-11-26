@@ -13,11 +13,12 @@ import {
 import { db } from "../db/client.ts";
 import { cohorts, paymentEvidence, students } from "../db/schema.ts";
 import { audit, courseBySlug, loadCatalog, nextCohort } from "../lib/catalog.ts";
-import { nid, newToken, nowIso } from "../lib/ids.ts";
+import { nid, newToken, nowIso, paymentTokenExpiry } from "../lib/ids.ts";
 import { buildEvidenceReceivedEmail, buildRegistrationEmail } from "../lib/email-templates.ts";
 import { sendMailSafe } from "../lib/mail.ts";
 import { sha256 } from "../lib/password.ts";
 import { rateLimit } from "../lib/rate-limit.ts";
+import { clientIp, ipBlocked, noteIpFailure } from "../lib/access-guard.ts";
 import { saveEvidenceFile } from "../lib/storage.ts";
 
 export const publicRoutes = new Hono();
@@ -32,14 +33,24 @@ function formatPhoneForStorage(country: string, raw: string) {
   return raw.trim();
 }
 
-function clientIp(c: { req: { header: (n: string) => string | undefined } }) {
-  return c.req.header("x-forwarded-for")?.split(",")[0]?.trim() || c.req.header("x-real-ip") || "local";
+async function studentFromToken(token: string) {
+  if (token.length < 32) return null;
+  const rows = await db.select().from(students).where(eq(students.tokenHash, sha256(token))).limit(1);
+  const student = rows[0];
+  if (!student?.tokenExpiresAt || student.tokenExpiresAt <= new Date().toISOString()) return null;
+  return student;
 }
 
 publicRoutes.get("/catalog", async (c) => {
-  const token = c.req.header("authorization")?.replace(/^Bearer\s+/i, "");
-  const expected = process.env.BUILD_TOKEN || "dev-build-token";
-  if (token !== expected) return c.json({ error: "Unauthorized" }, 401);
+  const ip = clientIp(c);
+  if (ipBlocked("catalog", ip)) return c.json({ error: "Unauthorized" }, 401);
+  const token = c.req.header("authorization")?.replace(/^Bearer\s+/i, "") || "";
+  const expected = process.env.BUILD_TOKEN || "";
+  const production = process.env.NODE_ENV === "production";
+  if (!expected || (production && expected === "dev-build-token") || token !== expected) {
+    noteIpFailure("catalog", ip);
+    return c.json({ error: "Unauthorized" }, 401);
+  }
   return c.json(await loadCatalog());
 });
 
@@ -131,6 +142,7 @@ publicRoutes.post("/register", async (c) => {
     motivation: parsed.data.motivation,
     referenceCode,
     tokenHash: sha256(token),
+    tokenExpiresAt: paymentTokenExpiry(),
     status: "registered",
     createdAt: ts,
     updatedAt: ts,
@@ -190,17 +202,23 @@ publicRoutes.post("/register", async (c) => {
   });
   } catch (err) {
     console.error("register failed", err);
-    const message = err instanceof Error ? err.message : "Registration failed. Try again.";
-    return c.json({ error: message }, 500);
+    return c.json({ error: "Registration failed. Try again." }, 500);
   }
 });
 
 publicRoutes.get("/status", async (c) => {
+  const ip = clientIp(c);
+  if (ipBlocked("token", ip)) return c.json({ error: "Too many attempts. Try later." }, 429);
   const token = c.req.query("token") || "";
-  if (token.length < 16) return c.json({ error: "Missing token" }, 400);
-  const rows = await db.select().from(students).where(eq(students.tokenHash, sha256(token))).limit(1);
-  const student = rows[0];
-  if (!student) return c.json({ error: "Unknown or expired link" }, 404);
+  if (token.length < 32) {
+    noteIpFailure("token", ip);
+    return c.json({ error: "Missing token" }, 400);
+  }
+  const student = await studentFromToken(token);
+  if (!student) {
+    noteIpFailure("token", ip);
+    return c.json({ error: "Unknown or expired link" }, 404);
+  }
 
   const catalog = await loadCatalog();
   const course = courseBySlug(catalog, student.courseSlug);
@@ -230,14 +248,21 @@ publicRoutes.post("/evidence", async (c) => {
     return c.json({ error: "Too many uploads. Try later." }, 429);
   }
 
+  const ip = clientIp(c);
+  if (ipBlocked("token", ip)) return c.json({ error: "Too many attempts. Try later." }, 429);
   const body = await c.req.parseBody({ all: true });
   const token = String(body.token || "");
   const method = body.method === "other" ? "other" : "transfer";
-  if (token.length < 16) return c.json({ error: "Missing token" }, 400);
+  if (token.length < 32) {
+    noteIpFailure("token", ip);
+    return c.json({ error: "Missing token" }, 400);
+  }
 
-  const rows = await db.select().from(students).where(eq(students.tokenHash, sha256(token))).limit(1);
-  const student = rows[0];
-  if (!student) return c.json({ error: "Unknown or expired link" }, 404);
+  const student = await studentFromToken(token);
+  if (!student) {
+    noteIpFailure("token", ip);
+    return c.json({ error: "Unknown or expired link" }, 404);
+  }
   if (student.status === "enrolled" || student.status === "verified") {
     return c.json({ error: "This registration is already verified." }, 409);
   }

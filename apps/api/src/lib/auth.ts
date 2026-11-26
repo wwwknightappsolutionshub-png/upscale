@@ -1,16 +1,22 @@
+import { randomBytes } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { deleteCookie, getCookie, setCookie } from "hono/cookie";
 import type { Context, Next } from "hono";
 import { db } from "../db/client.ts";
 import { adminUsers, sessions } from "../db/schema.ts";
-import { nid, nowIso } from "./ids.ts";
+import { nowIso } from "./ids.ts";
 
 const COOKIE = "upscale_admin";
-const DAYS = 7;
+/** Staff sessions expire after 8 hours. A new sign-in is required after that. */
+const SESSION_MS = 8 * 60 * 60 * 1000;
+
+function cookieSecure(c: Context) {
+  return c.req.url.startsWith("https://") || c.req.header("x-forwarded-proto") === "https";
+}
 
 export async function createSession(c: Context, adminUserId: string) {
-  const id = nid("ses");
-  const expires = new Date(Date.now() + DAYS * 864e5);
+  const id = randomBytes(32).toString("hex");
+  const expires = new Date(Date.now() + SESSION_MS);
   await db.insert(sessions).values({
     id,
     adminUserId,
@@ -20,8 +26,14 @@ export async function createSession(c: Context, adminUserId: string) {
     httpOnly: true,
     sameSite: "Lax",
     path: "/",
+    secure: cookieSecure(c),
     expires,
   });
+}
+
+/** Drop every desk session for this user, including other browsers. */
+export async function destroyAllSessions(adminUserId: string) {
+  await db.delete(sessions).where(eq(sessions.adminUserId, adminUserId));
 }
 
 export async function destroySession(c: Context) {
@@ -40,7 +52,13 @@ export async function currentAdmin(c: Context) {
     return null;
   }
   const users = await db.select().from(adminUsers).where(eq(adminUsers.id, ses.adminUserId)).limit(1);
-  return users[0] ?? null;
+  const user = users[0];
+  if (!user) return null;
+  if (user.lockedUntil && user.lockedUntil > nowIso()) {
+    await db.delete(sessions).where(eq(sessions.adminUserId, user.id));
+    return null;
+  }
+  return user;
 }
 
 export async function requireAdmin(c: Context, next: Next) {

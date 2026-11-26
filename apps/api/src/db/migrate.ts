@@ -56,7 +56,9 @@ CREATE TABLE IF NOT EXISTS admin_users (
   password_hash TEXT NOT NULL,
   name TEXT NOT NULL,
   role TEXT NOT NULL DEFAULT 'super_admin',
-  created_at TEXT NOT NULL
+  created_at TEXT NOT NULL,
+  failed_attempts INTEGER NOT NULL DEFAULT 0,
+  locked_until TEXT NOT NULL DEFAULT ''
 );
 CREATE TABLE IF NOT EXISTS sessions (
   id TEXT PRIMARY KEY,
@@ -75,6 +77,7 @@ CREATE TABLE IF NOT EXISTS students (
   motivation TEXT NOT NULL,
   reference_code TEXT NOT NULL UNIQUE,
   token_hash TEXT NOT NULL,
+  token_expires_at TEXT NOT NULL DEFAULT '',
   status TEXT NOT NULL,
   notes TEXT NOT NULL DEFAULT '',
   created_at TEXT NOT NULL,
@@ -135,6 +138,19 @@ export async function ensureSchema() {
   await addColumnIfMissing("admin_users", "role", "role TEXT NOT NULL DEFAULT 'super_admin'");
   await addColumnIfMissing("instructors", "photo_key", "photo_key TEXT NOT NULL DEFAULT ''");
   await addColumnIfMissing("cohorts", "price_ngn", "price_ngn INTEGER NOT NULL DEFAULT 0");
+  await addColumnIfMissing("admin_users", "failed_attempts", "failed_attempts INTEGER NOT NULL DEFAULT 0");
+  await addColumnIfMissing("admin_users", "locked_until", "locked_until TEXT NOT NULL DEFAULT ''");
+  await addColumnIfMissing("students", "token_expires_at", "token_expires_at TEXT NOT NULL DEFAULT ''");
+  const tokenUntil = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+  await client.execute({
+    sql: "UPDATE students SET token_expires_at = ? WHERE token_expires_at = ''",
+    args: [tokenUntil],
+  });
+  const sessionCap = new Date(Date.now() + 8 * 60 * 60 * 1000).toISOString();
+  await client.execute({
+    sql: "UPDATE sessions SET expires_at = ? WHERE expires_at > ?",
+    args: [sessionCap, sessionCap],
+  });
 
   try {
     await client.execute("CREATE UNIQUE INDEX IF NOT EXISTS students_phone_cohort ON students (phone, cohort_id)");

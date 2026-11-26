@@ -244,6 +244,55 @@ tbody tr:last-child td { border-bottom: 0; }
 .toolbar select {
   min-width: 11rem;
 }
+.pager {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem 1rem;
+  margin-top: 0.85rem;
+}
+.pager-meta {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+.pager-pages {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  align-items: center;
+}
+.pager-pages a,
+.pager-pages span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.1rem;
+  height: 2.1rem;
+  padding: 0 0.55rem;
+  border: 1px solid var(--line);
+  background: var(--white);
+  color: var(--ink);
+  text-decoration: none;
+  font-weight: 800;
+  font-size: 0.82rem;
+}
+.pager-pages a:hover { border-color: var(--blue); color: var(--blue); }
+.pager-pages .is-current {
+  background: var(--ink);
+  color: #fff;
+  border-color: var(--ink);
+}
+.pager-pages .is-disabled {
+  opacity: 0.4;
+}
+.pager-pages .gap {
+  border: 0;
+  background: transparent;
+  min-width: 1rem;
+  padding: 0;
+}
 .text-link {
   font-weight: 700;
   text-decoration: none;
@@ -279,7 +328,23 @@ input:focus, textarea:focus, select:focus {
   outline-offset: 1px;
   border-color: var(--blue);
 }
-.check { flex-direction: row; align-items: center; gap: 0.5rem; font-weight: 400; }
+.check {
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.45rem;
+  width: fit-content;
+  max-width: 100%;
+  font-weight: 400;
+}
+.check input {
+  width: 1rem;
+  height: 1rem;
+  min-width: 1rem;
+  max-width: 1rem;
+  padding: 0;
+  flex: 0 0 auto;
+}
 button {
   font: inherit;
   font-weight: 800;
@@ -797,6 +862,7 @@ const NAV: { href: string; label: string }[] = [
   { href: "/admin/emails", label: "Emails" },
   { href: "/admin/team", label: "Team" },
   { href: "/admin/audit", label: "Audit" },
+  { href: "/admin/account", label: "Account" },
 ];
 
 export function roleLabel(role: AdminRole) {

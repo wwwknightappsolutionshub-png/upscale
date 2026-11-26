@@ -9,5 +9,10 @@ export function nid(prefix: string) {
 }
 
 export function newToken() {
-  return randomBytes(24).toString("hex");
+  return randomBytes(32).toString("hex");
+}
+
+/** Payment and status links stay valid for 24 hours, then must be reissued. */
+export function paymentTokenExpiry() {
+  return new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
 }

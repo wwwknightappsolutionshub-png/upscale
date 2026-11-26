@@ -60,6 +60,8 @@ export const adminUsers = sqliteTable("admin_users", {
   name: text("name").notNull(),
   role: text("role").notNull().default("editor"),
   createdAt: text("created_at").notNull(),
+  failedAttempts: integer("failed_attempts").notNull().default(0),
+  lockedUntil: text("locked_until").notNull().default(""),
 });
 
 export const sessions = sqliteTable("sessions", {
@@ -81,6 +83,7 @@ export const students = sqliteTable("students", {
   motivation: text("motivation").notNull(),
   referenceCode: text("reference_code").notNull().unique(),
   tokenHash: text("token_hash").notNull(),
+  tokenExpiresAt: text("token_expires_at").notNull().default(""),
   status: text("status").notNull(),
   notes: text("notes").notNull().default(""),
   createdAt: text("created_at").notNull(),

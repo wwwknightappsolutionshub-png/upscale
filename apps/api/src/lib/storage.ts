@@ -1,24 +1,48 @@
+import { randomBytes } from "node:crypto";
 import { copyFile, mkdir, readdir, rm, writeFile } from "node:fs/promises";
-import { basename, extname, resolve } from "node:path";
+import { basename, extname, resolve, sep } from "node:path";
 import { existsSync } from "node:fs";
-import { nid } from "./ids.ts";
 
-const allowed = new Map<string, string>([
-  ["image/jpeg", ".jpg"],
-  ["image/png", ".png"],
-  ["image/webp", ".webp"],
-  ["application/pdf", ".pdf"],
-]);
+const MAX_UPLOAD = 5 * 1024 * 1024;
 
-const imageOnly = new Map<string, string>([
-  ["image/jpeg", ".jpg"],
-  ["image/jpg", ".jpg"],
-  ["image/png", ".png"],
-  ["image/webp", ".webp"],
-]);
+type Sniffed = { mime: string; ext: ".jpg" | ".png" | ".webp" | ".pdf" };
 
-function imageExtFor(file: File) {
-  return imageOnly.get(file.type) || { ".jpg": ".jpg", ".jpeg": ".jpg", ".png": ".png", ".webp": ".webp" }[extname(file.name).toLowerCase()];
+function sniff(buf: Buffer): Sniffed | null {
+  if (buf.length >= 3 && buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff) {
+    return { mime: "image/jpeg", ext: ".jpg" };
+  }
+  if (
+    buf.length >= 8 &&
+    buf[0] === 0x89 &&
+    buf[1] === 0x50 &&
+    buf[2] === 0x4e &&
+    buf[3] === 0x47 &&
+    buf[4] === 0x0d &&
+    buf[5] === 0x0a &&
+    buf[6] === 0x1a &&
+    buf[7] === 0x0a
+  ) {
+    return { mime: "image/png", ext: ".png" };
+  }
+  if (buf.length >= 12 && buf.subarray(0, 4).toString("ascii") === "RIFF" && buf.subarray(8, 12).toString("ascii") === "WEBP") {
+    return { mime: "image/webp", ext: ".webp" };
+  }
+  if (buf.length >= 8 && buf.subarray(0, 5).toString("ascii") === "%PDF-" && buf[5]! >= 0x31 && buf[5]! <= 0x39) {
+    return { mime: "application/pdf", ext: ".pdf" };
+  }
+  return null;
+}
+
+async function readChecked(file: File, allowPdf: boolean) {
+  if (file.size <= 0 || file.size > MAX_UPLOAD) {
+    throw new Error("File is larger than 5 MB.");
+  }
+  const buf = Buffer.from(await file.arrayBuffer());
+  const kind = sniff(buf);
+  if (!kind || (!allowPdf && kind.ext === ".pdf")) {
+    throw new Error(allowPdf ? "File content is not a JPG, PNG, WebP, or PDF." : "Photo must be a JPG, PNG, or WebP.");
+  }
+  return { buf, ...kind, name: `${randomBytes(16).toString("hex")}${kind.ext}` };
 }
 
 export function uploadRoot() {
@@ -47,61 +71,35 @@ export function mimeFromUploadKey(fileKey: string) {
 }
 
 export async function saveEvidenceFile(file: File, studentId: string) {
-  const mime = file.type || "application/octet-stream";
-  const ext = allowed.get(mime);
-  if (!ext) {
-    throw new Error("File type not allowed. Use JPG, PNG, WebP, or PDF.");
-  }
-  if (file.size > 5 * 1024 * 1024) {
-    throw new Error("File is larger than 5 MB.");
-  }
-  const id = nid("evf");
+  const saved = await readChecked(file, true);
   const dir = resolve(uploadRoot(), studentId);
   await mkdir(dir, { recursive: true });
-  const name = `${id}${ext}`;
-  const buf = Buffer.from(await file.arrayBuffer());
-  await writeFile(resolve(dir, name), buf);
-  return { fileKey: `${studentId}/${name}`, mime, size: file.size };
+  await writeFile(resolve(dir, saved.name), saved.buf);
+  return { fileKey: `${studentId}/${saved.name}`, mime: saved.mime, size: saved.buf.length };
 }
 
-export async function saveInstructorPhoto(file: File, instructorId: string) {
-  const ext = imageExtFor(file);
-  if (!ext) {
-    throw new Error("Photo must be JPG, PNG, or WebP.");
-  }
-  if (file.size > 5 * 1024 * 1024) {
-    throw new Error("Photo is larger than 5 MB.");
-  }
+export async function saveInstructorPhoto(file: File, _instructorId: string) {
+  const saved = await readChecked(file, false);
   const dir = resolve(uploadRoot(), "instructors");
   await mkdir(dir, { recursive: true });
-  const name = `${instructorId}-${nid("ph")}${ext}`;
-  const buf = Buffer.from(await file.arrayBuffer());
-  await writeFile(resolve(dir, name), buf);
-  const fileKey = `instructors/${name}`;
+  await writeFile(resolve(dir, saved.name), saved.buf);
+  const fileKey = `instructors/${saved.name}`;
   await copyInstructorPhotoToSite(fileKey);
-  return { fileKey, mime: file.type || mimeFromUploadKey(fileKey), size: file.size };
+  return { fileKey, mime: saved.mime, size: saved.buf.length };
 }
 
-export async function saveBrandAsset(file: File, slot: BrandSlot) {
-  const ext = imageExtFor(file);
-  if (!ext) {
-    throw new Error("Brand image must be JPG, PNG, or WebP.");
-  }
-  if (file.size > 5 * 1024 * 1024) {
-    throw new Error("Brand image is larger than 5 MB.");
-  }
+export async function saveBrandAsset(file: File, _slot: BrandSlot) {
+  const saved = await readChecked(file, false);
   const dir = resolve(uploadRoot(), "brand");
   await mkdir(dir, { recursive: true });
-  const name = `${slot}-${nid("br")}${ext}`;
-  const buf = Buffer.from(await file.arrayBuffer());
-  await writeFile(resolve(dir, name), buf);
-  const fileKey = `brand/${name}`;
+  await writeFile(resolve(dir, saved.name), saved.buf);
+  const fileKey = `brand/${saved.name}`;
   await copyBrandAssetToSite(fileKey);
   return {
     fileKey,
     publicUrl: brandAssetPublicUrl(fileKey)!,
-    mime: file.type || mimeFromUploadKey(fileKey),
-    size: file.size,
+    mime: saved.mime,
+    size: saved.buf.length,
   };
 }
 
@@ -152,7 +150,11 @@ export async function publishBrandAssets() {
 export function safeJoinUpload(fileKey: string) {
   const root = uploadRoot();
   const resolved = resolve(root, fileKey);
-  if (!resolved.startsWith(root) || basename(fileKey).includes("..")) {
+  const rootPrefix = root.endsWith(sep) ? root : root + sep;
+  if (resolved !== root && !resolved.startsWith(rootPrefix)) {
+    throw new Error("Invalid file key");
+  }
+  if (basename(fileKey).startsWith(".") || basename(fileKey).includes("..")) {
     throw new Error("Invalid file key");
   }
   if (!extname(resolved)) throw new Error("Invalid file key");

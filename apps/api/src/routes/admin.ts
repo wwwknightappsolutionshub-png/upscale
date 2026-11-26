@@ -1,5 +1,5 @@
 import { readFile } from "node:fs/promises";
-import { desc, eq } from "drizzle-orm";
+import { count, desc, eq } from "drizzle-orm";
 import { Hono } from "hono";
 import type { CourseFaq, CourseSlug, LandingSettings, TrackingPixel, TrackingProvider, WaysInItem, WeekBlock } from "@upscale/shared";
 import {
@@ -24,9 +24,10 @@ import {
   settings,
   students,
 } from "../db/schema.ts";
-import { createSession, currentAdmin, destroySession, requireAdmin } from "../lib/auth.ts";
+import { createSession, currentAdmin, destroyAllSessions, destroySession, requireAdmin } from "../lib/auth.ts";
+import { accountLocked, clearPasswordFailures, clientIp, ipBlocked, noteIpFailure, recordPasswordFailure } from "../lib/access-guard.ts";
 import { audit, loadCatalog, nextCohort } from "../lib/catalog.ts";
-import { nid, nowIso, newToken } from "../lib/ids.ts";
+import { nid, nowIso, newToken, paymentTokenExpiry } from "../lib/ids.ts";
 import { describeMailTransport, sendMail, sendMailSafe } from "../lib/mail.ts";
 import {
   buildEnrolledEmail,
@@ -68,14 +69,25 @@ adminRoutes.get("/login", async (c) => {
 });
 
 adminRoutes.post("/login", async (c) => {
+  const ip = clientIp(c);
+  if (ipBlocked("login", ip)) {
+    return c.html(loginPage("Too many attempts from this network. Try again later."), 429);
+  }
   const body = await c.req.parseBody();
   const email = String(body.email || "").toLowerCase().trim();
   const password = String(body.password || "");
+  if (email && (await accountLocked(email))) {
+    return c.html(loginPage("This account is locked. Try again in 15 minutes."), 429);
+  }
   const rows = await db.select().from(adminUsers).where(eq(adminUsers.email, email)).limit(1);
   const user = rows[0];
-  if (!user || !(await verifyPassword(password, user.passwordHash))) {
+  const passwordOk = user ? await verifyPassword(password, user.passwordHash) : await verifyPassword(password, "00".repeat(16) + ":" + "00".repeat(64));
+  if (!user || !passwordOk) {
+    noteIpFailure("login", ip);
+    if (user) await recordPasswordFailure(email);
     return c.html(loginPage("Those credentials are not right."));
   }
+  await clearPasswordFailures(user.id);
   await createSession(c, user.id);
   await audit(user.email, "login", "admin", user.id);
   return c.redirect("/admin");
@@ -214,9 +226,17 @@ adminRoutes.get("/", async (c) => {
 
 adminRoutes.get("/students", async (c) => {
   const admin = c.get("admin");
-  const status = c.req.query("status") || "";
+  const statuses = ["registered", "evidence_submitted", "verified", "rejected", "enrolled", "waitlist"];
+  const statusQuery = c.req.query("status") || "";
+  const status = statuses.includes(statusQuery) ? statusQuery : "";
   const rows = await db.select().from(students).orderBy(desc(students.createdAt));
   const filtered = status ? rows.filter((s) => s.status === status) : rows;
+  const requested = requestedPage(c.req.query("page"));
+  const bounds = pageBounds(filtered.length, requested);
+  if (requested !== bounds.current) {
+    return c.redirect(listHref("/admin/students", bounds.current, { status }));
+  }
+  const pageRows = filtered.slice(bounds.start, bounds.start + LIST_PAGE_SIZE);
   const catalog = await loadCatalog();
   return c.html(
     desk(admin, "Students", `
@@ -226,7 +246,7 @@ adminRoutes.get("/students", async (c) => {
         <form class="filters" method="get">
           <select name="status" onchange="this.form.submit()">
             <option value="">All statuses</option>
-            ${["registered", "evidence_submitted", "verified", "rejected", "enrolled", "waitlist"]
+            ${statuses
               .map((s) => `<option value="${s}" ${s === status ? "selected" : ""}>${s.replaceAll("_", " ")}</option>`)
               .join("")}
           </select>
@@ -237,7 +257,7 @@ adminRoutes.get("/students", async (c) => {
       <table>
         <thead><tr><th>Name</th><th>Course</th><th>Ref</th><th>Status</th><th>When</th></tr></thead>
         <tbody>
-          ${filtered
+          ${pageRows
             .map((s) => {
               const course = catalog.courses.find((x) => x.slug === s.courseSlug);
               return `<tr>
@@ -252,6 +272,7 @@ adminRoutes.get("/students", async (c) => {
         </tbody>
       </table>
       </div>
+      ${deskPager("Students", "/admin/students", { status }, bounds.current, bounds.pages, bounds.from, bounds.start + pageRows.length, filtered.length)}
     `, "/admin/students"),
   );
 });
@@ -542,7 +563,7 @@ adminRoutes.post("/evidence/:id/reject", async (c) => {
     .where(eq(paymentEvidence.id, id));
   await db
     .update(students)
-    .set({ status: "rejected", updatedAt: ts, tokenHash: sha256(token) })
+    .set({ status: "rejected", updatedAt: ts, tokenHash: sha256(token), tokenExpiresAt: paymentTokenExpiry() })
     .where(eq(students.id, student.id));
   await audit(admin.email, "evidence_reject", "student", student.id, { reason });
 
@@ -1526,6 +1547,15 @@ adminRoutes.get("/team", async (c) => {
           </table>
         </section>
       </div>
+      <section class="panel" style="margin-top:1rem">
+        <h2>Set a new password</h2>
+        <p class="note">Saving a new password signs that person out of every browser.</p>
+        <form method="post" action="/admin/team/password" class="stack">
+          <label>Email<input type="email" name="email" required maxlength="180" autocomplete="off" /></label>
+          <label>New password<input type="password" name="password" required minlength="8" autocomplete="new-password" /></label>
+          <button type="submit">Update password</button>
+        </form>
+      </section>
       <p class="sub" style="margin-top:1rem">
         <strong>Super admin</strong> — full access, including team management.<br />
         <strong>Admin</strong> — manage courses, cohorts, landing, legal pages, evidence, instructors, and delete students.<br />
@@ -1568,33 +1598,190 @@ adminRoutes.post("/team", async (c) => {
   return c.redirect(`/admin/team?ok=${encodeURIComponent(`${roleLabel(role)} ${name} created.`)}`);
 });
 
+adminRoutes.post("/team/password", async (c) => {
+  const admin = c.get("admin");
+  if (!canManageTeam(roleOf(admin))) return forbid(c, admin, "Only super admins can manage desk users.");
+  const ip = clientIp(c);
+  if (ipBlocked("password", ip) || !noteIpFailure("password", ip)) {
+    return c.redirect("/admin/team?error=Too+many+password+changes.+Try+again+later.");
+  }
+  const body = await c.req.parseBody();
+  const email = String(body.email || "").toLowerCase().trim();
+  const password = String(body.password || "");
+  if (password.length < 8) return c.redirect("/admin/team?error=Password+must+be+at+least+8+characters.");
+  const rows = await db.select().from(adminUsers).where(eq(adminUsers.email, email)).limit(1);
+  const user = rows[0];
+  if (!user) return c.redirect("/admin/team?error=No+desk+user+uses+that+email.");
+  await db.update(adminUsers).set({ passwordHash: await hashPassword(password), failedAttempts: 0, lockedUntil: "" }).where(eq(adminUsers.id, user.id));
+  await destroyAllSessions(user.id);
+  await audit(admin.email, "password_reset", "admin", user.id);
+  if (user.id === admin.id) {
+    await destroySession(c);
+    return c.redirect("/admin/login");
+  }
+  return c.redirect(`/admin/team?ok=${encodeURIComponent(`Password updated. ${user.name} was signed out everywhere.`)}`);
+});
+
+adminRoutes.get("/account", async (c) => {
+  const admin = c.get("admin");
+  const error = c.req.query("error") || "";
+  return c.html(
+    desk(
+      admin,
+      "Account",
+      `
+      ${pageHead("Account", "A new password signs you out of every device. Sign in again on this one.")}
+      ${error ? `<p class="err">${esc(error)}</p>` : ""}
+      <div class="panel">
+        <form method="post" action="/admin/account/password" class="stack">
+          <label>Current password<input type="password" name="current" required autocomplete="current-password" /></label>
+          <label>New password<input type="password" name="password" required minlength="8" autocomplete="new-password" /></label>
+          <button type="submit">Change password</button>
+        </form>
+      </div>
+    `,
+      "/admin/account",
+    ),
+  );
+});
+
+adminRoutes.post("/account/password", async (c) => {
+  const admin = c.get("admin");
+  const ip = clientIp(c);
+  if (ipBlocked("password", ip)) {
+    return c.redirect("/admin/account?error=Too+many+attempts.+Try+again+later.");
+  }
+  const body = await c.req.parseBody();
+  const current = String(body.current || "");
+  const password = String(body.password || "");
+  if (password.length < 8) return c.redirect("/admin/account?error=Password+must+be+at+least+8+characters.");
+  const ok = await verifyPassword(current, admin.passwordHash);
+  if (!ok) {
+    noteIpFailure("password", ip);
+    await recordPasswordFailure(admin.email);
+    if (await accountLocked(admin.email)) {
+      await destroyAllSessions(admin.id);
+      await destroySession(c);
+      return c.redirect("/admin/login");
+    }
+    return c.redirect("/admin/account?error=Current+password+is+not+right.");
+  }
+  await db.update(adminUsers).set({ passwordHash: await hashPassword(password), failedAttempts: 0, lockedUntil: "" }).where(eq(adminUsers.id, admin.id));
+  await destroyAllSessions(admin.id);
+  await destroySession(c);
+  await audit(admin.email, "password_change", "admin", admin.id);
+  return c.redirect("/admin/login");
+});
+
+const LIST_PAGE_SIZE = 20;
+
 adminRoutes.get("/audit", async (c) => {
   const admin = c.get("admin");
   if (!canViewAudit(roleOf(admin))) return forbid(c, admin, "Only admins can view the audit log.");
-  const rows = await db.select().from(auditLogs).orderBy(desc(auditLogs.createdAt)).limit(80);
+  const requested = requestedPage(c.req.query("page"));
+  const [{ total: totalRaw }] = await db.select({ total: count() }).from(auditLogs);
+  const total = Number(totalRaw) || 0;
+  const bounds = pageBounds(total, requested);
+  if (requested !== bounds.current) return c.redirect(listHref("/admin/audit", bounds.current, {}));
+  const rows = await db
+    .select()
+    .from(auditLogs)
+    .orderBy(desc(auditLogs.createdAt))
+    .limit(LIST_PAGE_SIZE)
+    .offset(bounds.start);
+  const to = bounds.start + rows.length;
   return c.html(
     desk(admin, "Audit", `
-      ${pageHead("Audit", "Recent admin actions across the desk.")}
+      ${pageHead("Audit", "Admin actions across the desk.")}
       <div class="panel table-wrap">
       <table>
         <thead><tr><th>When</th><th>Who</th><th>Action</th><th>On</th></tr></thead>
         <tbody>
-          ${rows
-            .map(
-              (r) => `<tr>
+          ${
+            rows
+              .map(
+                (r) => `<tr>
                 <td>${esc(r.createdAt.replace("T", " ").slice(0, 19))}</td>
                 <td>${esc(r.actor)}</td>
                 <td>${esc(r.action)}</td>
                 <td>${esc(r.entity)} ${esc(r.entityId)}</td>
               </tr>`,
-            )
-            .join("")}
+              )
+              .join("") || `<tr><td colspan="4">No audit entries yet.</td></tr>`
+          }
         </tbody>
       </table>
       </div>
+      ${deskPager("Audit", "/admin/audit", {}, bounds.current, bounds.pages, bounds.from, to, total)}
     `, "/admin/audit"),
   );
 });
+
+function requestedPage(raw: string | undefined) {
+  const n = Number(raw || "1");
+  return Number.isFinite(n) && n > 0 ? Math.floor(n) : 1;
+}
+
+function pageBounds(total: number, requested: number) {
+  const pages = Math.max(1, Math.ceil(total / LIST_PAGE_SIZE));
+  const current = Math.min(pages, requested);
+  const start = total === 0 ? 0 : (current - 1) * LIST_PAGE_SIZE;
+  return { pages, current, start, from: total === 0 ? 0 : start + 1 };
+}
+
+function listHref(path: string, page: number, extra: Record<string, string>) {
+  const q = new URLSearchParams();
+  for (const [key, value] of Object.entries(extra)) {
+    if (value) q.set(key, value);
+  }
+  if (page > 1) q.set("page", String(page));
+  const search = q.toString();
+  return search ? `${path}?${search}` : path;
+}
+
+function deskPager(
+  label: string,
+  path: string,
+  extra: Record<string, string>,
+  current: number,
+  pages: number,
+  from: number,
+  to: number,
+  total: number,
+) {
+  const window = pageWindow(current, pages);
+  const prev =
+    current > 1
+      ? `<a href="${listHref(path, current - 1, extra)}">Previous</a>`
+      : `<span class="is-disabled">Previous</span>`;
+  const next =
+    current < pages
+      ? `<a href="${listHref(path, current + 1, extra)}">Next</a>`
+      : `<span class="is-disabled">Next</span>`;
+  const nums = window
+    .map((item) => {
+      if (item === "…") return `<span class="gap">…</span>`;
+      if (item === current) return `<span class="is-current" aria-current="page">${item}</span>`;
+      return `<a href="${listHref(path, item, extra)}">${item}</a>`;
+    })
+    .join("");
+  return `<nav class="pager" aria-label="${esc(label)} pages">
+    <p class="pager-meta">${total === 0 ? "No entries" : `${from}–${to} of ${total}`}</p>
+    <div class="pager-pages">${prev}${nums}${next}</div>
+  </nav>`;
+}
+
+function pageWindow(current: number, pages: number): (number | "…")[] {
+  const wanted = new Set([1, pages, current - 1, current, current + 1]);
+  const nums = [...wanted].filter((n) => n >= 1 && n <= pages).sort((a, b) => a - b);
+  const out: (number | "…")[] = [];
+  for (const n of nums) {
+    const prev = out[out.length - 1];
+    if (typeof prev === "number" && n - prev > 1) out.push("…");
+    out.push(n);
+  }
+  return out;
+}
 
 function pipe(label: string, n: number | undefined) {
   return `<li><span class="num">${n ?? 0}</span><span class="label">${esc(label)}</span></li>`;
