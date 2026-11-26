@@ -2,7 +2,10 @@ import { z } from "zod";
 import { COUNTRIES, isNigeria } from "./countries.ts";
 import { NIGERIA_STATES } from "./nigeria.ts";
 import { isValidNgPhone } from "./phone.ts";
+import { sanitizePlain } from "./sanitize.ts";
 import type { TrackingPixel } from "./tracking.ts";
+
+export { sanitizePlain, sanitizeRich, isIsoDate, boundedInt } from "./sanitize.ts";
 
 export {
   TRACKING_PROVIDERS,
@@ -59,12 +62,15 @@ export const motivationLabel: Record<Motivation, string> = {
 
 export const registerSchema = z
   .object({
-    name: z.string().trim().min(2, "Enter your full name.").max(120),
-    email: z.string().trim().email("Enter a valid email address.").max(180),
-    phone: z.string().trim().min(7, "Enter a valid phone number.").max(20),
-    country: z.string().trim().min(2, "Select your country.").max(80),
-    state: z.string().trim().max(80).optional().default(""),
-    city: z.string().trim().max(80).optional().default(""),
+    name: z.string().transform((value) => sanitizePlain(value, 120)).pipe(z.string().min(2, "Enter your full name.")),
+    email: z
+      .string()
+      .transform((value) => sanitizePlain(value, 180).toLowerCase())
+      .pipe(z.string().email("Enter a valid email address.")),
+    phone: z.string().transform((value) => sanitizePlain(value, 20)).pipe(z.string().min(7, "Enter a valid phone number.")),
+    country: z.string().transform((value) => sanitizePlain(value, 80)).pipe(z.string().min(2, "Select your country.")),
+    state: z.string().transform((value) => sanitizePlain(value, 80)).optional().default(""),
+    city: z.string().transform((value) => sanitizePlain(value, 80)).optional().default(""),
     courseSlug: z.enum(COURSE_SLUGS),
     motivation: z.enum(MOTIVATIONS),
     consent: z.union([z.literal(true), z.literal("true"), z.literal("on"), z.literal("1")]),
@@ -108,7 +114,10 @@ export const registerSchema = z
 export type RegisterInput = z.infer<typeof registerSchema>;
 
 export const evidenceMetaSchema = z.object({
-  token: z.string().min(16).max(128),
+  token: z
+    .string()
+    .trim()
+    .regex(/^[a-f0-9]{32,128}$/i, "Missing token"),
   method: z.enum(["transfer", "other"]).default("transfer"),
 });
 

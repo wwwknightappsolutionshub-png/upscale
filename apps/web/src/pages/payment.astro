@@ -93,7 +93,15 @@ import { apiUrl } from "../lib/catalog";
 
   document.getElementById("up-form")?.addEventListener("submit", async (e) => {
     e.preventDefault();
-    const data = new FormData(e.currentTarget);
+    const form = e.currentTarget;
+    const data = new FormData(form);
+    const file = data.get("file");
+    const okType = file instanceof File && ["image/jpeg", "image/png", "image/webp", "application/pdf"].includes(file.type);
+    const okName = file instanceof File && /\.(jpe?g|png|webp|pdf)$/i.test(file.name || "");
+    if (!(file instanceof File) || file.size <= 0 || file.size > 5 * 1024 * 1024 || (!okType && !okName)) {
+      fail("Use a JPG, PNG, WebP, or PDF under 5 MB.");
+      return;
+    }
     const res = await fetch(`${api}/public/evidence`, { method: "POST", body: data });
     const json = await res.json();
     if (!res.ok) {

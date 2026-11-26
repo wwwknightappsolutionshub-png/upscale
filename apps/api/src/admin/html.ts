@@ -955,7 +955,7 @@ export function loginPage(error = "") {
       <h1>UPSCALE desk</h1>
       <p class="lede">Staff only. The public site is elsewhere.</p>
       ${error ? `<p class="err">${error}</p>` : ""}
-      <label>Email<input type="email" name="email" required autocomplete="username" /></label>
+      <label>Email<input type="email" name="email" required maxlength="180" autocomplete="username" /></label>
       <label>Password<input type="password" name="password" required autocomplete="current-password" /></label>
       <button type="submit">Enter</button>
     </form>

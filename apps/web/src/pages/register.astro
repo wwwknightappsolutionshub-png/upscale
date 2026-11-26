@@ -422,10 +422,41 @@ const courseFees = Object.fromEntries(
     `;
   }
 
+  function validReceipt(file) {
+    const okType = ["image/jpeg", "image/png", "image/webp", "application/pdf"].includes(file.type);
+    const okName = /\.(jpe?g|png|webp|pdf)$/i.test(file.name || "");
+    return file.size > 0 && file.size <= 5 * 1024 * 1024 && (okType || okName);
+  }
+
   form?.addEventListener("submit", async (e) => {
     e.preventDefault();
     clearFieldErrors();
+    if (!form.reportValidity()) return;
     const data = new FormData(form);
+    const name = String(data.get("name") || "").trim();
+    const email = String(data.get("email") || "").trim();
+    const phone = String(data.get("phone") || "").replace(/\D/g, "");
+    if (name.length < 2 || /[<>]/.test(name)) {
+      showFieldError("name", "Enter your full name without symbols like < or >.");
+      showResultDialog("err", "Check the form", "Enter your full name without symbols like < or >.", "Try again");
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      showFieldError("email", "Enter a valid email address.");
+      showResultDialog("err", "Check the form", "Enter a valid email address.", "Try again");
+      return;
+    }
+    if (phone.length < 7 || phone.length > 15) {
+      showFieldError("phone", "Enter a valid phone number.");
+      showResultDialog("err", "Check the form", "Enter a valid phone number.", "Try again");
+      return;
+    }
+    const receipt = uploadForm?.querySelector("input[type=file]")?.files?.[0];
+    if (receipt && !validReceipt(receipt)) {
+      showFieldError("file", "Use a JPG, PNG, WebP, or PDF under 5 MB.");
+      showResultDialog("err", "Check the file", "Use a JPG, PNG, WebP, or PDF under 5 MB.", "Try again");
+      return;
+    }
     data.set("consent", "true");
     if (!isNigeria(countrySelect?.value)) {
       data.set("state", "");
@@ -473,6 +504,12 @@ const courseFees = Object.fromEntries(
     e.preventDefault();
     uploadError.hidden = true;
     const data = new FormData(uploadForm);
+    const file = data.get("file");
+    if (!(file instanceof File) || !validReceipt(file)) {
+      uploadError.hidden = false;
+      uploadError.textContent = "Use a JPG, PNG, WebP, or PDF under 5 MB.";
+      return;
+    }
     data.set("token", uploadToken);
     data.set("method", "transfer");
     const btn = document.getElementById("upload-submit");

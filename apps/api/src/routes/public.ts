@@ -7,6 +7,7 @@ import {
   formatNgPhone,
   isNigeria,
   normalizeNgPhone,
+  evidenceMetaSchema,
   registerSchema,
   type CourseSlug,
 } from "@upscale/shared";
@@ -251,12 +252,16 @@ publicRoutes.post("/evidence", async (c) => {
   const ip = clientIp(c);
   if (ipBlocked("token", ip)) return c.json({ error: "Too many attempts. Try later." }, 429);
   const body = await c.req.parseBody({ all: true });
-  const token = String(body.token || "");
-  const method = body.method === "other" ? "other" : "transfer";
-  if (token.length < 32) {
+  const parsedEvidence = evidenceMetaSchema.safeParse({
+    token: String(body.token || ""),
+    method: body.method === "other" ? "other" : "transfer",
+  });
+  if (!parsedEvidence.success) {
     noteIpFailure("token", ip);
     return c.json({ error: "Missing token" }, 400);
   }
+  const token = parsedEvidence.data.token;
+  const method = parsedEvidence.data.method;
 
   const student = await studentFromToken(token);
   if (!student) {

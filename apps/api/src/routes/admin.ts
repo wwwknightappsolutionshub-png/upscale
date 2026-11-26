@@ -10,6 +10,11 @@ import {
   parseTrackingValue,
   TRACKING_PROVIDER_LABEL,
   TRACKING_PROVIDERS,
+  boundedInt,
+  COURSE_SLUGS,
+  isIsoDate,
+  sanitizePlain,
+  sanitizeRich,
   WAYS_IN_MARKS,
 } from "@upscale/shared";
 import { seedCatalog } from "@upscale/shared/seed";
@@ -74,7 +79,7 @@ adminRoutes.post("/login", async (c) => {
     return c.html(loginPage("Too many attempts from this network. Try again later."), 429);
   }
   const body = await c.req.parseBody();
-  const email = String(body.email || "").toLowerCase().trim();
+  const email = sanitizePlain(body.email, 180).toLowerCase();
   const password = String(body.password || "");
   if (email && (await accountLocked(email))) {
     return c.html(loginPage("This account is locked. Try again in 15 minutes."), 429);
@@ -549,7 +554,7 @@ adminRoutes.post("/evidence/:id/reject", async (c) => {
   if (!canReviewEvidence(roleOf(admin))) return forbid(c, admin, "You cannot review evidence.");
   const id = c.req.param("id");
   const body = await c.req.parseBody();
-  const reason = String(body.reason || "").trim();
+  const reason = sanitizePlain(body.reason, 500);
   if (!reason) return c.text("Reason required", 400);
   const ev = (await db.select().from(paymentEvidence).where(eq(paymentEvidence.id, id)).limit(1))[0];
   if (!ev) return c.text("Not found", 404);
@@ -672,12 +677,7 @@ adminRoutes.post("/courses/:id", async (c) => {
   const row = (await db.select().from(courses).where(eq(courses.id, id)).limit(1))[0];
   if (!row) return c.text("Not found", 404);
   const body = await c.req.parseBody();
-  let outlineJson = String(body.outlineJson || row.outlineJson);
-  try {
-    JSON.parse(outlineJson);
-  } catch {
-    return c.text("Outline JSON is not valid", 400);
-  }
+  const outlineJson = String(body.outlineJson || row.outlineJson);
   let faqJson = row.faqJson;
   try {
     const parsed = JSON.parse(String(body.faqJson ?? row.faqJson ?? "[]"));
@@ -685,35 +685,60 @@ adminRoutes.post("/courses/:id", async (c) => {
     const faqs: CourseFaq[] = parsed
       .filter((f): f is CourseFaq => f && typeof f === "object")
       .map((f) => ({
-        q: String((f as CourseFaq).q || "").trim().slice(0, 240),
-        a: String((f as CourseFaq).a || "").trim().slice(0, 800),
+        q: sanitizePlain((f as CourseFaq).q, 240),
+        a: sanitizeRich((f as CourseFaq).a, 800),
       }))
       .filter((f) => f.q && f.a);
     faqJson = JSON.stringify(faqs);
   } catch {
     return c.text("Course FAQ JSON is not valid", 400);
   }
-  const price = Number(body.price);
-  const currency = String(body.currency || "USD");
+  const price = boundedInt(body.price, 0, 100_000_000);
+  const currency = sanitizePlain(body.currency || "USD", 3).toUpperCase();
+  const seatCap = boundedInt(body.seatCap, 1, 500);
+  const durationWeeks = boundedInt(body.durationWeeks, 1, 52);
+  const weeklyHours = boundedInt(body.weeklyHours, 1, 40);
   const rawNgn = String(body.priceNgn ?? "").trim();
-  const priceNgn = rawNgn === "" ? 0 : Math.max(0, Math.round(Number(rawNgn)));
+  const priceNgn = rawNgn === "" ? 0 : boundedInt(rawNgn, 0, 100_000_000);
+  if (price == null || seatCap == null || durationWeeks == null || weeklyHours == null || priceNgn == null || !/^[A-Z]{3}$/.test(currency)) {
+    return c.text("Check the price, currency, seats, and duration.", 400);
+  }
+  let outline: unknown;
+  try {
+    outline = JSON.parse(outlineJson);
+  } catch {
+    return c.text("Outline JSON is not valid", 400);
+  }
+  const safeOutline = Array.isArray(outline)
+    ? outline.slice(0, 40).map((week) => {
+        const row = (week && typeof week === "object" ? week : {}) as Record<string, unknown>;
+        const topics = Array.isArray(row.topics) ? row.topics.map((topic) => sanitizePlain(topic, 160)).filter(Boolean).slice(0, 20) : [];
+        return {
+          week: boundedInt(row.week, 1, 52) ?? 1,
+          title: sanitizePlain(row.title, 120),
+          hours: boundedInt(row.hours, 0, 40) ?? 0,
+          topics,
+          project: row.project ? sanitizePlain(row.project, 240) : null,
+        };
+      })
+    : [];
   await db
     .update(courses)
     .set({
-      name: String(body.name || row.name).trim() || row.name,
-      shortPitch: String(body.shortPitch || ""),
+      name: sanitizePlain(body.name || row.name, 120) || row.name,
+      shortPitch: sanitizeRich(body.shortPitch, 4000),
       price,
       currency,
-      seatCap: Number(body.seatCap),
-      durationWeeks: Number(body.durationWeeks),
-      weeklyHours: Number(body.weeklyHours),
+      seatCap,
+      durationWeeks,
+      weeklyHours,
       registrationOpen: body.registrationOpen ? 1 : 0,
-      outcomesJson: JSON.stringify(String(body.outcomes || "").split("\n").map((x) => x.trim()).filter(Boolean)),
-      toolsJson: JSON.stringify(String(body.tools || "").split("\n").map((x) => x.trim()).filter(Boolean)),
-      prerequisites: String(body.prerequisites || ""),
-      ogDescription: String(body.ogDescription || ""),
+      outcomesJson: JSON.stringify(String(body.outcomes || "").split("\n").map((x) => sanitizePlain(x, 200)).filter(Boolean).slice(0, 30)),
+      toolsJson: JSON.stringify(String(body.tools || "").split("\n").map((x) => sanitizePlain(x, 80)).filter(Boolean).slice(0, 30)),
+      prerequisites: sanitizeRich(body.prerequisites, 4000),
+      ogDescription: sanitizePlain(body.ogDescription, 300),
       faqJson,
-      outlineJson,
+      outlineJson: JSON.stringify(safeOutline),
     })
     .where(eq(courses.id, id));
 
@@ -802,10 +827,10 @@ adminRoutes.post("/instructors/page", async (c) => {
   const current = await loadCatalog();
   const next: LandingSettings = {
     ...current.settings,
-    facultyKicker: String(body.facultyKicker || "").trim() || "Faculty",
-    facultyTitle: String(body.facultyTitle || "").trim() || "The room.",
+    facultyKicker: sanitizePlain(body.facultyKicker, 40) || "Faculty",
+    facultyTitle: sanitizePlain(body.facultyTitle, 80) || "The room.",
     facultyLede:
-      String(body.facultyLede || "").trim() ||
+      sanitizePlain(body.facultyLede, 400) ||
       "Not a grid of stock portraits. A cast list — who teaches which track, and the proof they bring into the live session.",
   };
   await db.update(settings).set({ json: JSON.stringify(next) }).where(eq(settings.id, "main"));
@@ -832,7 +857,7 @@ adminRoutes.post("/instructors/:id", async (c) => {
   const row = (await db.select().from(instructors).where(eq(instructors.id, id)).limit(1))[0];
   if (!row) return c.text("Not found", 404);
   const body = await c.req.parseBody({ all: true });
-  const name = String(body.name || "").trim();
+  const name = sanitizePlain(body.name, 120);
   if (name.length < 2) return c.text("Instructor name must be at least 2 characters.", 400);
   let photoKey = row.photoKey || "";
   if (body.removePhoto) photoKey = "";
@@ -846,15 +871,17 @@ adminRoutes.post("/instructors/:id", async (c) => {
     }
   }
   const rawCourses = body.courses;
-  const selectedCourses = (Array.isArray(rawCourses) ? rawCourses : rawCourses ? [rawCourses] : []).map(String) as CourseSlug[];
+  const selectedCourses = (Array.isArray(rawCourses) ? rawCourses : rawCourses ? [rawCourses] : [])
+    .map((value) => sanitizePlain(value, 80))
+    .filter((slug): slug is CourseSlug => (COURSE_SLUGS as readonly string[]).includes(slug));
   await db
     .update(instructors)
     .set({
       name,
       initials: initialsFromName(name),
-      role: String(body.role || "").trim(),
-      bio: String(body.bio || ""),
-      accent: String(body.accent || "blue"),
+      role: sanitizePlain(body.role, 120),
+      bio: sanitizeRich(body.bio, 8000),
+      accent: body.accent === "red" ? "red" : "blue",
       photoKey,
       courseSlugsJson: JSON.stringify(selectedCourses),
     })
@@ -937,12 +964,10 @@ adminRoutes.post("/cohorts/page", async (c) => {
   const current = await loadCatalog();
   const next: LandingSettings = {
     ...current.settings,
-    scheduleKicker: String(body.scheduleKicker || "").trim() || "Calendar",
-    scheduleTitle: String(body.scheduleTitle || "").trim() || "When we meet.",
-    scheduleLede:
-      String(body.scheduleLede || "").trim() ||
-      "Live online in {timezone}. Recordings same day. Studio work still due.",
-    scheduleSessionsLabel: String(body.scheduleSessionsLabel || "").trim() || "2×",
+    scheduleKicker: sanitizePlain(body.scheduleKicker, 40) || "Calendar",
+    scheduleTitle: sanitizePlain(body.scheduleTitle, 80) || "When we meet.",
+    scheduleLede: sanitizePlain(body.scheduleLede, 400) || "Live online in {timezone}. Recordings same day. Studio work still due.",
+    scheduleSessionsLabel: sanitizePlain(body.scheduleSessionsLabel, 20) || "2×",
   };
   await db.update(settings).set({ json: JSON.stringify(next) }).where(eq(settings.id, "main"));
   await audit(admin.email, "schedule_page_update", "settings", "main");
@@ -953,20 +978,28 @@ adminRoutes.post("/cohorts/:id", async (c) => {
   const admin = c.get("admin");
   if (!canManageSiteContent(roleOf(admin))) return forbid(c, admin, "Only admins can manage the calendar.");
   const body = await c.req.parseBody();
+  const startDate = sanitizePlain(body.startDate, 10);
+  const endDate = sanitizePlain(body.endDate, 10);
+  const seatCap = boundedInt(body.seatCap, 1, 500);
+  const price = boundedInt(body.price, 0, 100_000_000);
+  const currency = sanitizePlain(body.currency, 3).toUpperCase();
   const rawNgn = String(body.priceNgn ?? "").trim();
-  const priceNgn = rawNgn === "" ? 0 : Math.max(0, Math.round(Number(rawNgn)));
+  const priceNgn = rawNgn === "" ? 0 : boundedInt(rawNgn, 0, 100_000_000);
+  if (!isIsoDate(startDate) || !isIsoDate(endDate) || endDate < startDate || seatCap == null || price == null || priceNgn == null || !/^[A-Z]{3}$/.test(currency)) {
+    return c.text("Check the dates, price, currency, and seat count.", 400);
+  }
   await db
     .update(cohorts)
     .set({
-      startDate: String(body.startDate),
-      endDate: String(body.endDate),
-      daysLabel: String(body.daysLabel),
-      timeLabel: String(body.timeLabel),
-      timezone: String(body.timezone),
-      seatCap: Number(body.seatCap),
-      price: Number(body.price),
-      currency: String(body.currency),
-      priceNgn: Number.isFinite(priceNgn) ? priceNgn : 0,
+      startDate,
+      endDate,
+      daysLabel: sanitizePlain(body.daysLabel, 80),
+      timeLabel: sanitizePlain(body.timeLabel, 80),
+      timezone: sanitizePlain(body.timezone, 40),
+      seatCap,
+      price,
+      currency,
+      priceNgn,
     })
     .where(eq(cohorts.id, c.req.param("id")));
   await audit(admin.email, "cohort_update", "cohort", c.req.param("id"));
@@ -1084,6 +1117,15 @@ adminRoutes.post("/landing", async (c) => {
   try {
     faqs = JSON.parse(String(body.faqs));
     proof = JSON.parse(String(body.proof));
+    if (!Array.isArray(faqs) || !Array.isArray(proof)) throw new Error("shape");
+    faqs = faqs.slice(0, 40).map((item) => {
+      const row = (item && typeof item === "object" ? item : {}) as Record<string, unknown>;
+      return { q: sanitizePlain(row.q, 240), a: sanitizePlain(row.a, 800) };
+    }).filter((item) => item.q && item.a);
+    proof = proof.slice(0, 8).map((item) => {
+      const row = (item && typeof item === "object" ? item : {}) as Record<string, unknown>;
+      return { value: sanitizePlain(row.value, 40), label: sanitizePlain(row.label, 80) };
+    }).filter((item) => item.value && item.label);
   } catch {
     return c.text("FAQ or proof JSON is invalid", 400);
   }
@@ -1094,8 +1136,8 @@ adminRoutes.post("/landing", async (c) => {
       : ("switch" as WaysInItem["mark"]);
     return {
       mark,
-      title: String(body[`waysTitle${i}`] || "").trim(),
-      copy: String(body[`waysCopy${i}`] || "").trim(),
+      title: sanitizePlain(body[`waysTitle${i}`], 80),
+      copy: sanitizePlain(body[`waysCopy${i}`], 600),
     };
   });
   if (waysIn.some((w) => !w.title || !w.copy)) {
@@ -1126,30 +1168,30 @@ adminRoutes.post("/landing", async (c) => {
   }
   const next: LandingSettings = {
     ...current.settings,
-    tagline: String(body.tagline),
-    heroLine: String(body.heroLine),
-    email: String(body.email),
-    whatsapp: String(body.whatsapp || ""),
-    timezone: String(body.timezone),
+    tagline: sanitizePlain(body.tagline, 160),
+    heroLine: sanitizePlain(body.heroLine, 500),
+    email: sanitizePlain(body.email, 180).toLowerCase(),
+    whatsapp: sanitizePlain(body.whatsapp, 40),
+    timezone: sanitizePlain(body.timezone, 40),
     registrationOpen: Boolean(body.registrationOpen),
-    closedMessage: String(body.closedMessage || ""),
-    waysInTitle: String(body.waysInTitle || "Ways in").trim() || "Ways in",
-    tracksTitle: String(body.tracksTitle || "The tracks").trim() || "The tracks",
+    closedMessage: sanitizePlain(body.closedMessage, 500),
+    waysInTitle: sanitizePlain(body.waysInTitle, 60) || "Ways in",
+    tracksTitle: sanitizePlain(body.tracksTitle, 60) || "The tracks",
     waysIn,
     logoUrl,
     heroMarkBlueUrl,
     heroMarkRedUrl,
     bank: {
-      bankName: String(body.bankName),
-      accountName: String(body.accountName),
-      accountNumber: String(body.accountNumber),
-      instructions: String(body.instructions),
+      bankName: sanitizePlain(body.bankName, 120),
+      accountName: sanitizePlain(body.accountName, 160),
+      accountNumber: sanitizePlain(body.accountNumber, 40),
+      instructions: sanitizePlain(body.instructions, 800),
     },
     bankUsd: {
-      bankName: String(body.bankUsdName || "").trim(),
-      accountName: String(body.bankUsdAccountName || "").trim(),
-      accountNumber: String(body.bankUsdAccountNumber || "").trim(),
-      instructions: String(body.bankUsdInstructions || "").trim(),
+      bankName: sanitizePlain(body.bankUsdName, 120),
+      accountName: sanitizePlain(body.bankUsdAccountName, 160),
+      accountNumber: sanitizePlain(body.bankUsdAccountNumber, 40),
+      instructions: sanitizePlain(body.bankUsdInstructions, 800),
     },
     faqs,
     proof,
@@ -1215,19 +1257,18 @@ adminRoutes.post("/legal", async (c) => {
   if (!canManageSiteContent(roleOf(admin))) return forbid(c, admin, "Only admins can edit legal pages.");
   const body = await c.req.parseBody();
   const current = await loadCatalog();
-  const privacyBody = String(body.privacyBody || "").trim().slice(0, 50000);
-  const termsBody = String(body.termsBody || "").trim().slice(0, 50000);
+  const privacyBody = sanitizeRich(body.privacyBody, 50000);
+  const termsBody = sanitizeRich(body.termsBody, 50000);
   if (!privacyBody || !termsBody) return c.text("Privacy and Terms bodies are required.", 400);
   const next: LandingSettings = {
     ...current.settings,
-    privacyKicker: String(body.privacyKicker || "").trim().slice(0, 40) || current.settings.privacyKicker,
-    privacyTitle: String(body.privacyTitle || "").trim().slice(0, 80) || current.settings.privacyTitle,
-    privacyDescription:
-      String(body.privacyDescription || "").trim().slice(0, 200) || current.settings.privacyDescription,
+    privacyKicker: sanitizePlain(body.privacyKicker, 40) || current.settings.privacyKicker,
+    privacyTitle: sanitizePlain(body.privacyTitle, 80) || current.settings.privacyTitle,
+    privacyDescription: sanitizePlain(body.privacyDescription, 200) || current.settings.privacyDescription,
     privacyBody,
-    termsKicker: String(body.termsKicker || "").trim().slice(0, 40) || current.settings.termsKicker,
-    termsTitle: String(body.termsTitle || "").trim().slice(0, 80) || current.settings.termsTitle,
-    termsDescription: String(body.termsDescription || "").trim().slice(0, 200) || current.settings.termsDescription,
+    termsKicker: sanitizePlain(body.termsKicker, 40) || current.settings.termsKicker,
+    termsTitle: sanitizePlain(body.termsTitle, 80) || current.settings.termsTitle,
+    termsDescription: sanitizePlain(body.termsDescription, 200) || current.settings.termsDescription,
     termsBody,
   };
   await db.update(settings).set({ json: JSON.stringify(next) }).where(eq(settings.id, "main"));
@@ -1264,7 +1305,7 @@ function readTrackingForm(body: Record<string, unknown>, id: string): TrackingPi
   const providerRaw = String(body.provider || "");
   if (!isTrackingProvider(providerRaw)) throw new Error("Choose a provider.");
   const provider = providerRaw;
-  const name = String(body.name || "").trim().slice(0, 80) || TRACKING_PROVIDER_LABEL[provider];
+  const name = sanitizePlain(body.name, 80) || TRACKING_PROVIDER_LABEL[provider];
   return {
     id,
     name,
@@ -1438,8 +1479,8 @@ adminRoutes.post("/emails/test", async (c) => {
   const admin = c.get("admin");
   if (!canManageEmailTemplates(roleOf(admin))) return forbid(c, admin, "Only super admins can send test email.");
   const body = await c.req.parseBody();
-  const to = String(body.to || admin.email).trim().toLowerCase();
-  if (!to.includes("@")) {
+  const to = sanitizePlain(body.to || admin.email, 180).toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) {
     return c.redirect(`/admin/emails/registration?testerr=${encodeURIComponent("Enter a valid email address.")}`);
   }
   try {
@@ -1488,9 +1529,9 @@ adminRoutes.post("/emails/registration", async (c) => {
   const admin = c.get("admin");
   if (!canManageEmailTemplates(roleOf(admin))) return forbid(c, admin, "Only super admins can edit email templates.");
   const body = await c.req.parseBody();
-  const subject = String(body.subject || "").trim();
-  const html = String(body.html || "").trim();
-  const text = String(body.text || "").trim();
+  const subject = sanitizePlain(body.subject, 180);
+  const html = sanitizeRich(body.html, 50000);
+  const text = sanitizePlain(body.text, 20000);
   if (!subject || !html) return c.text("Subject and HTML body are required.", 400);
   await saveEmailTemplate("registration", { subject, html, text });
   await audit(admin.email, "email_template_update", "email_template", "registration");
@@ -1571,8 +1612,8 @@ adminRoutes.post("/team", async (c) => {
   const admin = c.get("admin");
   if (!canManageTeam(roleOf(admin))) return forbid(c, admin, "Only super admins can manage desk users.");
   const body = await c.req.parseBody();
-  const name = String(body.name || "").trim();
-  const email = String(body.email || "").toLowerCase().trim();
+  const name = sanitizePlain(body.name, 120);
+  const email = sanitizePlain(body.email, 180).toLowerCase();
   const password = String(body.password || "");
   const roleRaw = String(body.role || "editor");
   const role: AdminRole =
@@ -1606,7 +1647,7 @@ adminRoutes.post("/team/password", async (c) => {
     return c.redirect("/admin/team?error=Too+many+password+changes.+Try+again+later.");
   }
   const body = await c.req.parseBody();
-  const email = String(body.email || "").toLowerCase().trim();
+  const email = sanitizePlain(body.email, 180).toLowerCase();
   const password = String(body.password || "");
   if (password.length < 8) return c.redirect("/admin/team?error=Password+must+be+at+least+8+characters.");
   const rows = await db.select().from(adminUsers).where(eq(adminUsers.email, email)).limit(1);
