@@ -45,6 +45,8 @@ const trackingBody = renderTrackingBody(catalog.settings.tracking);
           width="553"
           height="224"
           alt="UPSCALE — Learn Today, Build Tomorrow."
+          fetchpriority="high"
+          decoding="async"
         />
       </a>
       <button
@@ -71,7 +73,9 @@ const trackingBody = renderTrackingBody(catalog.settings.tracking);
             src={logoSrc}
             width="553"
             height="224"
-            alt="UPSCALE — Learn Today, Build Tomorrow."
+            alt=""
+            decoding="async"
+            loading="lazy"
           />
         </a>
         <nav class="rail-courses" aria-label="Courses">

@@ -2,6 +2,7 @@
 import Horizon from "../layouts/Horizon.astro";
 import { getCatalog } from "../lib/catalog";
 import { stripHtml } from "../lib/rich";
+import { breadcrumbList, jsonLdGraph } from "../lib/seo";
 
 const catalog = await getCatalog();
 const s = catalog.settings;
@@ -11,6 +12,12 @@ const description = s.privacyDescription || stripHtml(bodyHtml).slice(0, 160);
 <Horizon
   title={`${stripHtml(s.privacyTitle) || "Privacy"} · UPSCALE`}
   description={description}
+  jsonLd={jsonLdGraph(
+    breadcrumbList([
+      { name: "Home", path: "/" },
+      { name: stripHtml(s.privacyTitle) || "Privacy", path: "/privacy/" },
+    ]),
+  )}
 >
   <article class="legal">
     {s.privacyKicker ? <p class="kicker">{s.privacyKicker}</p> : null}

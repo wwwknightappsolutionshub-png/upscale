@@ -3,6 +3,7 @@ import Horizon from "../../layouts/Horizon.astro";
 import SpiralWeb from "../../components/SpiralWeb.astro";
 import { getCatalog, peerInstructors, uniqueFaculty } from "../../lib/catalog";
 import { stripHtml } from "../../lib/rich";
+import { absoluteUrl, breadcrumbList, jsonLdGraph } from "../../lib/seo";
 import Avatar from "../../components/Avatar.astro";
 
 export async function getStaticPaths() {
@@ -32,15 +33,22 @@ const person = {
 const courseSlugs = new Set(peers.flatMap((p) => p.courseSlugs));
 const courses = catalog.courses.filter((c) => courseSlugs.has(c.slug));
 const roleLabel = person.roles?.length ? person.roles.join(" · ") : person.role;
-const jsonLd = {
-  "@context": "https://schema.org",
-  "@type": "Person",
-  name: person.name,
-  jobTitle: roleLabel,
-  description: stripHtml(person.bio) || roleLabel,
-  worksFor: { "@type": "EducationalOrganization", name: "UPSCALE" },
-  ...(person.photoUrl ? { image: person.photoUrl } : {}),
-};
+const jsonLd = jsonLdGraph(
+  {
+    "@type": "Person",
+    name: person.name,
+    jobTitle: roleLabel,
+    description: stripHtml(person.bio) || roleLabel,
+    url: absoluteUrl(`/instructors/${person.slug}/`),
+    worksFor: { "@type": "EducationalOrganization", name: "UPSCALE", url: absoluteUrl("/") },
+    ...(person.photoUrl ? { image: absoluteUrl(person.photoUrl) } : {}),
+  },
+  breadcrumbList([
+    { name: "Home", path: "/" },
+    { name: "Instructors", path: "/instructors/" },
+    { name: person.name, path: `/instructors/${person.slug}/` },
+  ]),
+);
 ---
 <Horizon
   title={`${person.name} · Instructor | UPSCALE`}

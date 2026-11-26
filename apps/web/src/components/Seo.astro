@@ -8,29 +8,37 @@ interface Props {
   ogImage?: string;
 }
 
-const site = import.meta.env.PUBLIC_SITE_URL || Astro.site?.toString() || "http://localhost:4321";
+import { metaDescription } from "../lib/seo";
+
+const site = import.meta.env.PUBLIC_SITE_URL || Astro.site?.toString() || "https://upscalecohort.com";
 const path = Astro.url.pathname;
 const canonical = Astro.props.canonical || new URL(path, site).toString();
 const ogPath = Astro.props.ogImage || "/brand/upscale-logo.png";
 const og = new URL(ogPath, site).toString();
-const { title, description, noindex, jsonLd } = Astro.props;
+const { title, noindex, jsonLd } = Astro.props;
+const description = metaDescription(Astro.props.description);
 ---
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>{title}</title>
 <meta name="description" content={description} />
 <link rel="canonical" href={canonical} />
-{noindex && <meta name="robots" content="noindex,nofollow" />}
+<meta name="robots" content={noindex ? "noindex, nofollow" : "index, follow, max-image-preview:large"} />
+<meta property="og:locale" content="en_NG" />
+<meta property="og:site_name" content="UPSCALE" />
 <meta property="og:type" content="website" />
 <meta property="og:title" content={title} />
 <meta property="og:description" content={description} />
 <meta property="og:url" content={canonical} />
 <meta property="og:image" content={og} />
+<meta property="og:image:alt" content="UPSCALE — Learn Today, Build Tomorrow." />
 <meta name="twitter:card" content="summary_large_image" />
 <meta name="twitter:title" content={title} />
 <meta name="twitter:description" content={description} />
 <meta name="twitter:image" content={og} />
 <link rel="icon" href="/favicon.png" type="image/png" />
 <link rel="apple-touch-icon" href="/brand/upscale-mark.png" />
+<link rel="sitemap" type="application/xml" title="Sitemap" href="/sitemap-index.xml" />
+<link rel="preload" href="/fonts/anek-sans-regular.ttf" as="font" type="font/ttf" crossorigin />
 <link rel="preload" href="/fonts/anek-sans-extrabold.ttf" as="font" type="font/ttf" crossorigin />
 {jsonLd && <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} />}

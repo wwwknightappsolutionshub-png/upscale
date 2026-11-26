@@ -3,14 +3,32 @@ import Horizon from "../../layouts/Horizon.astro";
 import { formatFeeLabel } from "@upscale/shared";
 import { formatDay, getCatalog, nextCohort } from "../../lib/catalog";
 import { stripHtml } from "../../lib/rich";
+import { absoluteUrl, breadcrumbList, jsonLdGraph } from "../../lib/seo";
 
 const catalog = await getCatalog();
 const trackCount = catalog.courses.length;
 const trackWord = trackCount === 1 ? "track" : "tracks";
+const jsonLd = jsonLdGraph(
+  {
+    "@type": "ItemList",
+    name: "UPSCALE courses",
+    itemListElement: catalog.courses.map((course, index) => ({
+      "@type": "ListItem",
+      position: index + 1,
+      name: course.name,
+      url: absoluteUrl(`/courses/${course.slug}/`),
+    })),
+  },
+  breadcrumbList([
+    { name: "Home", path: "/" },
+    { name: "Courses", path: "/courses/" },
+  ]),
+);
 ---
 <Horizon
   title="Courses · UPSCALE"
   description={`${trackCount} virtual tracks at UPSCALE — design, product, photo, video, front-end, backend, and full stack.`}
+  jsonLd={jsonLd}
 >
   <p class="kicker">Programmes</p>
   <h1 class="display">{trackCount} {trackWord}. One institute.</h1>

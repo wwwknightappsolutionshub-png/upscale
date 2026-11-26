@@ -1,17 +1,23 @@
 ---
 import Horizon from "../layouts/Horizon.astro";
 import { getCatalog } from "../lib/catalog";
+import { breadcrumbList, jsonLdGraph } from "../lib/seo";
 
 const catalog = await getCatalog();
-const jsonLd = {
-  "@context": "https://schema.org",
-  "@type": "FAQPage",
-  mainEntity: catalog.settings.faqs.map((f) => ({
-    "@type": "Question",
-    name: f.q,
-    acceptedAnswer: { "@type": "Answer", text: f.a },
-  })),
-};
+const jsonLd = jsonLdGraph(
+  {
+    "@type": "FAQPage",
+    mainEntity: catalog.settings.faqs.map((f) => ({
+      "@type": "Question",
+      name: f.q,
+      acceptedAnswer: { "@type": "Answer", text: f.a },
+    })),
+  },
+  breadcrumbList([
+    { name: "Home", path: "/" },
+    { name: "FAQ", path: "/faq/" },
+  ]),
+);
 ---
 <Horizon
   title="FAQ · UPSCALE"

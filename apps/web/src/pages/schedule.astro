@@ -2,6 +2,7 @@
 import Horizon from "../layouts/Horizon.astro";
 import { formatFeeLabel, seatsLeft } from "@upscale/shared";
 import { formatDay, getCatalog, nextCohort } from "../lib/catalog";
+import { breadcrumbList, jsonLdGraph } from "../lib/seo";
 
 const catalog = await getCatalog();
 const rows = catalog.courses
@@ -22,6 +23,12 @@ const lede = s.scheduleLede.replaceAll("{timezone}", s.timezone);
 <Horizon
   title="Schedule · UPSCALE"
   description="Upcoming virtual cohort dates, class days, and remaining seats for UPSCALE tracks."
+  jsonLd={jsonLdGraph(
+    breadcrumbList([
+      { name: "Home", path: "/" },
+      { name: "Schedule", path: "/schedule/" },
+    ]),
+  )}
 >
   <header class="schedule-head">
     <div>

@@ -2,22 +2,28 @@
 import Horizon from "../../layouts/Horizon.astro";
 import { getCatalog, uniqueFaculty } from "../../lib/catalog";
 import { stripHtml } from "../../lib/rich";
+import { absoluteUrl, breadcrumbList, jsonLdGraph } from "../../lib/seo";
 import Avatar from "../../components/Avatar.astro";
 
 const catalog = await getCatalog();
 const faculty = uniqueFaculty(catalog.instructors);
 const s = catalog.settings;
-const jsonLd = {
-  "@context": "https://schema.org",
-  "@type": "ItemList",
-  name: "UPSCALE instructors",
-  itemListElement: faculty.map((i, n) => ({
-    "@type": "ListItem",
-    position: n + 1,
-    url: `/instructors/${i.slug}`,
-    name: i.name,
-  })),
-};
+const jsonLd = jsonLdGraph(
+  {
+    "@type": "ItemList",
+    name: "UPSCALE instructors",
+    itemListElement: faculty.map((i, n) => ({
+      "@type": "ListItem",
+      position: n + 1,
+      url: absoluteUrl(`/instructors/${i.slug}/`),
+      name: i.name,
+    })),
+  },
+  breadcrumbList([
+    { name: "Home", path: "/" },
+    { name: "Instructors", path: "/instructors/" },
+  ]),
+);
 ---
 <Horizon
   title="Instructors · UPSCALE"

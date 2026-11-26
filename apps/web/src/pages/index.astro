@@ -4,20 +4,32 @@ import Mark from "../components/Mark.astro";
 import { formatFeeLabel } from "@upscale/shared";
 import { formatDay, getCatalog, instructorsOf, nextCohort } from "../lib/catalog";
 import { stripHtml } from "../lib/rich";
+import { absoluteUrl, siteOrigin } from "../lib/seo";
 import "../styles/home.css";
 
 const catalog = await getCatalog();
-const site = import.meta.env.PUBLIC_SITE_URL || "http://localhost:4321";
+const site = siteOrigin();
 const jsonLd = {
   "@context": "https://schema.org",
   "@graph": [
     {
       "@type": "EducationalOrganization",
+      "@id": absoluteUrl("/#organization"),
       name: "UPSCALE",
       slogan: catalog.settings.tagline,
       url: site,
+      logo: absoluteUrl(catalog.settings.logoUrl || "/brand/upscale-logo.png"),
       email: catalog.settings.email,
       description: catalog.settings.heroLine,
+    },
+    {
+      "@type": "WebSite",
+      "@id": absoluteUrl("/#website"),
+      name: "UPSCALE",
+      url: site,
+      description: catalog.settings.heroLine,
+      publisher: { "@id": absoluteUrl("/#organization") },
+      inLanguage: "en",
     },
     {
       "@type": "FAQPage",

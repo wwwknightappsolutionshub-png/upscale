@@ -8,7 +8,7 @@ export default defineConfig({
   devToolbar: { enabled: false },
   integrations: [
     sitemap({
-      filter: (page) => !page.includes("/payment") && !page.includes("/register"),
+      filter: (page) => !page.includes("/payment") && !page.includes("/register") && !page.includes("/404"),
     }),
   ],
   build: {

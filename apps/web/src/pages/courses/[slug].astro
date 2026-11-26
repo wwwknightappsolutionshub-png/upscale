@@ -3,6 +3,7 @@ import Horizon from "../../layouts/Horizon.astro";
 import { formatFeeLabel, seatsLeft } from "@upscale/shared";
 import { courseOf, formatDay, getCatalog, instructorsOf, nextCohort } from "../../lib/catalog";
 import { stripHtml } from "../../lib/rich";
+import { absoluteUrl, breadcrumbList, jsonLdGraph, siteOrigin } from "../../lib/seo";
 import Avatar from "../../components/Avatar.astro";
 
 export async function getStaticPaths() {
@@ -20,14 +21,17 @@ const visibleOutline = course.outline.filter((w) => w.title || w.topics.length |
 const hasOutcomes = course.outcomes.length > 0;
 const hasTools = course.tools.length > 0;
 const hasPrereqs = stripHtml(course.prerequisites).length > 0;
-const site = import.meta.env.PUBLIC_SITE_URL || "http://localhost:4321";
-const jsonLd = {
-  "@context": "https://schema.org",
+const site = siteOrigin();
+const courseUrl = absoluteUrl(`/courses/${course.slug}/`);
+const jsonLd = jsonLdGraph(
+  {
   "@type": "Course",
   name: course.name,
   description: course.ogDescription,
+  url: courseUrl,
   provider: { "@type": "EducationalOrganization", name: "UPSCALE", url: site },
   courseMode: "Online",
+  inLanguage: "en",
   timeToComplete: `P${course.durationWeeks}W`,
   offers: cohort
     ? {
@@ -35,7 +39,7 @@ const jsonLd = {
         price: cohort.price,
         priceCurrency: cohort.currency,
         availability: seatsLeft(cohort) > 0 ? "https://schema.org/InStock" : "https://schema.org/SoldOut",
-        url: `${site}/courses/${course.slug}`,
+        url: courseUrl,
       }
     : undefined,
   hasCourseInstance: cohort
@@ -46,7 +50,13 @@ const jsonLd = {
         endDate: cohort.endDate,
       }
     : undefined,
-};
+  },
+  breadcrumbList([
+    { name: "Home", path: "/" },
+    { name: "Courses", path: "/courses/" },
+    { name: course.name, path: `/courses/${course.slug}/` },
+  ]),
+);
 ---
 <Horizon
   title={`${course.name} (Virtual) | UPSCALE`}
