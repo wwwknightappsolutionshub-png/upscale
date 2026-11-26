@@ -1,4 +1,5 @@
 import type { Catalog, Course, CourseSlug, Instructor, LandingSettings } from "@upscale/shared";
+import { normalizeTracking } from "@upscale/shared";
 import { seedCatalog } from "@upscale/shared/seed";
 
 /** Browser-facing API (baked into register/payment scripts). Must be publicly reachable. */
@@ -43,6 +44,7 @@ function withSettingsDefaults(catalog: Catalog): Catalog {
       heroMarkRedUrl: raw.heroMarkRedUrl ? String(raw.heroMarkRedUrl).trim() || null : null,
       waysIn: Array.isArray(raw.waysIn) && raw.waysIn.length ? raw.waysIn : defaults.waysIn,
       whatsapp: raw.whatsapp || defaults.whatsapp,
+      tracking: normalizeTracking(raw.tracking),
     },
   };
 }

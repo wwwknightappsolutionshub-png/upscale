@@ -1,6 +1,6 @@
 import { asc, eq } from "drizzle-orm";
 import type { Catalog, Course, CourseSlug, Instructor, LandingSettings, WaysInItem } from "@upscale/shared";
-import { WAYS_IN_MARKS } from "@upscale/shared";
+import { normalizeTracking, WAYS_IN_MARKS } from "@upscale/shared";
 import { seedCatalog } from "@upscale/shared/seed";
 import { db } from "../db/client.ts";
 import { auditLogs, cohorts, courses, instructors, settings } from "../db/schema.ts";
@@ -74,6 +74,7 @@ export async function loadCatalog(): Promise<Catalog> {
         ? String(parsedSettings.heroMarkRedUrl).trim() || null
         : null,
       waysIn: normalizeWaysIn(parsedSettings.waysIn),
+      tracking: normalizeTracking(parsedSettings.tracking),
     },
     courses: courseRows.map(rowToCourse),
     instructors: instructorRows.map(rowToInstructor),

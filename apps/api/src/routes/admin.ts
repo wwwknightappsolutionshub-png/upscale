@@ -1,8 +1,17 @@
 import { readFile } from "node:fs/promises";
 import { desc, eq } from "drizzle-orm";
 import { Hono } from "hono";
-import type { CourseFaq, CourseSlug, LandingSettings, WaysInItem, WeekBlock } from "@upscale/shared";
-import { formatFeeLabel, formatMoney, isNigeria, WAYS_IN_MARKS } from "@upscale/shared";
+import type { CourseFaq, CourseSlug, LandingSettings, TrackingPixel, TrackingProvider, WaysInItem, WeekBlock } from "@upscale/shared";
+import {
+  formatFeeLabel,
+  formatMoney,
+  isNigeria,
+  isTrackingProvider,
+  parseTrackingValue,
+  TRACKING_PROVIDER_LABEL,
+  TRACKING_PROVIDERS,
+  WAYS_IN_MARKS,
+} from "@upscale/shared";
 import { seedCatalog } from "@upscale/shared/seed";
 import { db } from "../db/client.ts";
 import {
@@ -1203,6 +1212,157 @@ adminRoutes.post("/legal", async (c) => {
   await db.update(settings).set({ json: JSON.stringify(next) }).where(eq(settings.id, "main"));
   await audit(admin.email, "legal_update", "settings", "main");
   return c.redirect(await publishAndRedirect("/admin/legal"));
+});
+
+function providerOptions(selected: TrackingProvider) {
+  return TRACKING_PROVIDERS.map(
+    (provider) =>
+      `<option value="${provider}" ${provider === selected ? "selected" : ""}>${esc(TRACKING_PROVIDER_LABEL[provider])}</option>`,
+  ).join("");
+}
+
+function trackingFields(entry: TrackingPixel | null) {
+  const provider = entry?.provider || "facebook";
+  const name = entry?.name || "";
+  const value = entry?.value || "";
+  const enabled = entry ? entry.enabled : true;
+  return `
+    <div class="form-grid">
+      <label>Name<input name="name" value="${esc(name)}" maxlength="80" placeholder="Main site pixel" /></label>
+      <label>Provider
+        <select name="provider" required>${providerOptions(provider)}</select>
+      </label>
+    </div>
+    <label class="full">Pixel ID or snippet
+      <textarea name="value" rows="5" required placeholder="Facebook: 123456789012345&#10;Analytics: G-XXXXXXXX&#10;Tag Manager: GTM-XXXX&#10;Custom: paste the vendor snippet">${esc(value)}</textarea>
+    </label>
+    <label class="check"><input type="checkbox" name="enabled" value="1" ${enabled ? "checked" : ""} /> Enabled on the public site</label>`;
+}
+
+function readTrackingForm(body: Record<string, unknown>, id: string): TrackingPixel {
+  const providerRaw = String(body.provider || "");
+  if (!isTrackingProvider(providerRaw)) throw new Error("Choose a provider.");
+  const provider = providerRaw;
+  const name = String(body.name || "").trim().slice(0, 80) || TRACKING_PROVIDER_LABEL[provider];
+  return {
+    id,
+    name,
+    provider,
+    value: parseTrackingValue(provider, String(body.value || "")),
+    enabled: body.enabled === "1" || body.enabled === "on",
+  };
+}
+
+adminRoutes.get("/tracking", async (c) => {
+  const admin = c.get("admin");
+  if (!canManageSiteContent(roleOf(admin))) return forbid(c, admin, "Only admins can manage tracking.");
+  const catalog = await loadCatalog();
+  const pixels = catalog.settings.tracking;
+  const error = c.req.query("error");
+  const cards = pixels
+    .map(
+      (entry) => `
+      <article class="cardish">
+        <p class="sub">${esc(TRACKING_PROVIDER_LABEL[entry.provider])} · ${entry.enabled ? "On" : "Off"}</p>
+        <form method="post" action="/admin/tracking/${esc(entry.id)}" class="stack">
+          ${trackingFields(entry)}
+          <div class="form-actions">
+            <button type="submit">Save pixel</button>
+          </div>
+        </form>
+        <form method="post" action="/admin/tracking/${esc(entry.id)}/delete" style="margin-top:0.75rem" data-confirm="Remove ${esc(entry.name)}? The public site will be rebuilt without it." onsubmit="return confirm(this.getAttribute('data-confirm'));">
+          <button class="danger" type="submit">Remove</button>
+        </form>
+      </article>`,
+    )
+    .join("");
+  return c.html(
+    desk(
+      admin,
+      "Tracking",
+      `
+      ${pageHead("Tracking", "Add a Facebook Pixel, Google Analytics, Tag Manager, or another vendor snippet. Enabled entries load on every public page after you save.")}
+      ${flashBanner(c)}
+      ${error ? `<p class="banner bad">${esc(error)}</p>` : ""}
+      <div class="panel">
+        <h2>Add an entry</h2>
+        <p class="note">Facebook Pixel ID is the number in Events Manager → Data sources. Saving rebuilds the public site. Mention an active pixel on the Privacy page. If Tag Manager already loads Analytics, do not add a separate Analytics entry.</p>
+        <form method="post" action="/admin/tracking" class="stack">
+          ${trackingFields(null)}
+          ${formActions("Add pixel")}
+        </form>
+      </div>
+      <div class="panel">
+        <h2>Installed</h2>
+        ${cards ? `<div class="stack">${cards}</div>` : `<p class="note">Nothing installed yet.</p>`}
+      </div>
+    `,
+      "/admin/tracking",
+    ),
+  );
+});
+
+adminRoutes.post("/tracking", async (c) => {
+  const admin = c.get("admin");
+  if (!canManageSiteContent(roleOf(admin))) return forbid(c, admin, "Only admins can manage tracking.");
+  const body = await c.req.parseBody();
+  const current = await loadCatalog();
+  if (current.settings.tracking.length >= 20) {
+    return c.redirect("/admin/tracking?error=" + encodeURIComponent("You can store up to 20 tracking entries."));
+  }
+  let entry: TrackingPixel;
+  try {
+    entry = readTrackingForm(body as Record<string, unknown>, nid("trk"));
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Could not save that pixel.";
+    return c.redirect("/admin/tracking?error=" + encodeURIComponent(message));
+  }
+  const next: LandingSettings = {
+    ...current.settings,
+    tracking: [...current.settings.tracking, entry],
+  };
+  await db.update(settings).set({ json: JSON.stringify(next) }).where(eq(settings.id, "main"));
+  await audit(admin.email, "tracking_create", "tracking", entry.id, { provider: entry.provider, name: entry.name });
+  return c.redirect(await publishAndRedirect("/admin/tracking"));
+});
+
+adminRoutes.post("/tracking/:id", async (c) => {
+  const admin = c.get("admin");
+  if (!canManageSiteContent(roleOf(admin))) return forbid(c, admin, "Only admins can manage tracking.");
+  const id = c.req.param("id");
+  const body = await c.req.parseBody();
+  const current = await loadCatalog();
+  if (!current.settings.tracking.some((entry) => entry.id === id)) {
+    return c.redirect("/admin/tracking?error=" + encodeURIComponent("That tracking entry is gone."));
+  }
+  let entry: TrackingPixel;
+  try {
+    entry = readTrackingForm(body as Record<string, unknown>, id);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Could not save that pixel.";
+    return c.redirect("/admin/tracking?error=" + encodeURIComponent(message));
+  }
+  const next: LandingSettings = {
+    ...current.settings,
+    tracking: current.settings.tracking.map((row) => (row.id === id ? entry : row)),
+  };
+  await db.update(settings).set({ json: JSON.stringify(next) }).where(eq(settings.id, "main"));
+  await audit(admin.email, "tracking_update", "tracking", id, { provider: entry.provider, enabled: entry.enabled });
+  return c.redirect(await publishAndRedirect("/admin/tracking"));
+});
+
+adminRoutes.post("/tracking/:id/delete", async (c) => {
+  const admin = c.get("admin");
+  if (!canManageSiteContent(roleOf(admin))) return forbid(c, admin, "Only admins can manage tracking.");
+  const id = c.req.param("id");
+  const current = await loadCatalog();
+  const next: LandingSettings = {
+    ...current.settings,
+    tracking: current.settings.tracking.filter((entry) => entry.id !== id),
+  };
+  await db.update(settings).set({ json: JSON.stringify(next) }).where(eq(settings.id, "main"));
+  await audit(admin.email, "tracking_delete", "tracking", id);
+  return c.redirect(await publishAndRedirect("/admin/tracking"));
 });
 
 adminRoutes.post("/publish", async (c) => {

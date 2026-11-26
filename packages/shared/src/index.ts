@@ -2,6 +2,18 @@ import { z } from "zod";
 import { COUNTRIES, isNigeria } from "./countries.ts";
 import { NIGERIA_STATES } from "./nigeria.ts";
 import { isValidNgPhone } from "./phone.ts";
+import type { TrackingPixel } from "./tracking.ts";
+
+export {
+  TRACKING_PROVIDERS,
+  TRACKING_PROVIDER_LABEL,
+  isTrackingProvider,
+  normalizeTracking,
+  parseTrackingValue,
+  renderTrackingBody,
+  renderTrackingHead,
+} from "./tracking.ts";
+export type { TrackingPixel, TrackingProvider } from "./tracking.ts";
 
 export const COURSE_SLUGS = [
   "graphic-design",
@@ -231,6 +243,8 @@ export type LandingSettings = {
   heroMarkBlueUrl: string | null;
   /** Homepage hero mark (red layer). Null uses the bundled default. */
   heroMarkRedUrl: string | null;
+  /** Site-wide analytics tags injected on every public page. */
+  tracking: TrackingPixel[];
 };
 
 export type Catalog = {

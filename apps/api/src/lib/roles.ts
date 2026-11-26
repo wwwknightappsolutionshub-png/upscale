@@ -48,7 +48,8 @@ export function navAllowed(href: string, role: AdminRole) {
     href === "/admin/courses" ||
     href === "/admin/cohorts" ||
     href === "/admin/landing" ||
-    href === "/admin/legal"
+    href === "/admin/legal" ||
+    href === "/admin/tracking"
   ) {
     return canManageSiteContent(role);
   }

@@ -450,6 +450,7 @@ export const seedCatalog: Catalog = {
     logoUrl: null,
     heroMarkBlueUrl: null,
     heroMarkRedUrl: null,
+    tracking: [],
     waysIn: [
       {
         mark: "switch",
